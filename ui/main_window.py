@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget, QMainWindow,
                                QStackedWidget, QWidget)
 
+from ui.games_page import GamesPage
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -17,6 +19,9 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(QLabel("游戏列表(待实现)"))
         self.pages.addWidget(QLabel("配置编辑(待实现)"))
         self.pages.addWidget(QLabel("状态监控(待实现)"))
+
+        self.games_page = GamesPage()
+        self.replace_page(0, self.games_page)
 
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.setCurrentRow(0)
