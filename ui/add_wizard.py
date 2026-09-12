@@ -56,6 +56,7 @@ class PageAnticheat(QWizardPage):
         self.result = QLabel()
         self.result.setWordWrap(True)
         self.ack = QCheckBox("我已了解: 反作弊游戏注入有封禁风险, 后果自负")
+        self.ack.toggled.connect(self.completeChanged)
         lay = QVBoxLayout(self)
         lay.addWidget(self.result)
         lay.addWidget(self.ack)
