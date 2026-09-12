@@ -121,8 +121,16 @@ class GamesPage(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setWidget(self._cards_area)
         lay = QVBoxLayout(self)
+        btn_add = QPushButton("＋ 添加游戏")
+        btn_add.clicked.connect(self._add_wizard)
+        lay.addWidget(btn_add)
         lay.addWidget(scroll)
         self.refresh()
+
+    def _add_wizard(self):
+        from ui.add_wizard import AddGameWizard
+        if AddGameWizard(self).exec():
+            self.refresh()
 
     def refresh(self):
         while self._grid.count():
