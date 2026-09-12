@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget, QMainWindow,
 
 from ui.config_editor import ConfigEditorPage
 from ui.games_page import GamesPage
+from ui.monitor_page import MonitorPage
 
 
 class MainWindow(QMainWindow):
@@ -27,6 +28,10 @@ class MainWindow(QMainWindow):
         self.config_page = ConfigEditorPage()
         self.replace_page(1, self.config_page)
         self.games_page.edit_requested.connect(self._goto_config)
+
+        self.monitor_page = MonitorPage()
+        self.replace_page(2, self.monitor_page)
+        self.games_page.runner.line.connect(self.monitor_page.append_event)
 
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.setCurrentRow(0)
