@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget, QMainWindow,
                                QStackedWidget, QWidget)
 
+from ui.config_editor import ConfigEditorPage
 from ui.games_page import GamesPage
 
 
@@ -23,6 +24,10 @@ class MainWindow(QMainWindow):
         self.games_page = GamesPage()
         self.replace_page(0, self.games_page)
 
+        self.config_page = ConfigEditorPage()
+        self.replace_page(1, self.config_page)
+        self.games_page.edit_requested.connect(self._goto_config)
+
         self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav.setCurrentRow(0)
 
@@ -38,3 +43,7 @@ class MainWindow(QMainWindow):
         self.pages.removeWidget(old)
         old.deleteLater()
         self.pages.insertWidget(index, widget)
+
+    def _goto_config(self, name: str):
+        self.config_page.select_game(name)
+        self.nav.setCurrentRow(1)
