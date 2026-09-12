@@ -54,7 +54,7 @@ class MonitorPage(QWidget):
 
     def _refresh_result(self):
         mtime, text = monitor.read_result()
-        if mtime is None:
+        if mtime is None or not text:
             self.result_label.setStyleSheet("color:#888;")
             self.result_label.setText("暂无注入记录")
             return

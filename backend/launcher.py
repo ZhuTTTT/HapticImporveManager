@@ -53,7 +53,9 @@ def set_ifeo(runner: ProcessRunner, name: str, on: bool) -> None:
 
 def is_game_running(exe_name: str) -> bool:
     """tasklist 查进程, 无第三方依赖。"""
-    out = subprocess.run(
+    proc = subprocess.run(
         ["tasklist", "/FI", f"IMAGENAME eq {exe_name}", "/NH"],
-        capture_output=True, text=True).stdout
+        capture_output=True)
+    # 手动解码: text=True 走区域代码页(GBK), 遇非法字节会 UnicodeDecodeError
+    out = proc.stdout.decode("utf-8", errors="replace")
     return exe_name.lower() in out.lower()

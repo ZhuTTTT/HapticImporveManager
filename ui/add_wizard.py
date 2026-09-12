@@ -113,6 +113,8 @@ class PageConfig(QWizardPage):
         doc["playback"]["mode"] = self.mode.currentText()
         # tomlkit 要求字符串键 — 点分键 target_buffer_len.48000 解析后为 str
         doc["playback"]["target_buffer_len"]["48000"] = self.buf.value()
+        if self.mode.currentText() == "Ringbuf":
+            doc["playback"]["ring_buffer_len"]["48000"] = self.buf.value()
         config.save_config(game_dir, doc)
         return True
 
@@ -134,8 +136,10 @@ class PageIfeo(QWizardPage):
         lay.addWidget(note)
 
     def _enable(self):
-        launcher.set_ifeo(self.runner, self.field("game_name"), True)
+        launcher.set_ifeo(self.runner, self.field("game_name").strip(), True)
         self._poll_count = 0
+        if getattr(self, "_timer", None) is not None:
+            self._timer.stop()  # 重复点击时先停旧定时器, 避免多个 QTimer 并发触发
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
         self._timer.timeout.connect(self._poll)
@@ -166,7 +170,7 @@ class AddGameWizard(QWizard):
 
     def accept(self):
         registry.add_game(registry.GameEntry(
-            name=self.field("game_name"),
+            name=self.field("game_name").strip(),
             exe=self.field("game_exe"),
             mode_hint=self.page(2).mode.currentText(),
             buffer_hint=self.page(2).buf.value(),

@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (QCheckBox, QFrame, QGridLayout, QHBoxLayout,
                                QLabel, QMessageBox, QPushButton, QScrollArea,
                                QVBoxLayout, QWidget)
@@ -81,6 +81,8 @@ class GameCard(QFrame):
     def _on_ifeo_toggled(self, checked: bool):
         launcher.set_ifeo(self.runner, self.entry.name, checked)
         self._poll_count = 0
+        if getattr(self, "_poll", None) is not None:
+            self._poll.stop()  # 重复勾选时先停旧定时器, 避免多个 QTimer 并发触发
         self._poll = QTimer(self)
         self._poll.setInterval(1000)
         self._poll.timeout.connect(self._poll_ifeo)
@@ -101,7 +103,7 @@ class GameCard(QFrame):
 
     def _remove(self):
         if QMessageBox.question(self, "移除游戏",
-                                f"从注册表移除 {self.entry.name}?"
+                                f"从列表移除 {self.entry.name}?"
                                 "(不动游戏文件和 IFEO)") == QMessageBox.StandardButton.Yes:
             registry.remove_game(self.entry.name)
             self.removed.emit()

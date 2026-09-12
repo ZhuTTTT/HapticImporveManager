@@ -49,7 +49,8 @@ def load_config(game_dir: str) -> TOMLDocument:
 
 
 def save_config(game_dir: str, doc: TOMLDocument) -> None:
-    with open(config_file(game_dir), "w", encoding="utf-8") as f:
+    # newline="": 保留 tomlkit 输出的 LF, 避免 Windows 文本模式转成 CRLF
+    with open(config_file(game_dir), "w", encoding="utf-8", newline="") as f:
         f.write(tomlkit.dumps(doc))
 
 

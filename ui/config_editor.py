@@ -118,14 +118,16 @@ class ConfigEditorPage(QWidget):
                 self.doc = config.default_config()
                 config.save_config(entry.game_dir, self.doc)
             else:
+                self.doc = None  # 清掉上一游戏的 doc, 防止 _save 误写陈旧配置
+                self.form_host.setEnabled(False)  # 避免表单显示上一游戏的值误导
                 return
         except Exception as e:  # tomlkit 语法错误: 显示原文, 禁表单与保存
             self.doc = None
             self.form_host.setEnabled(False)
             self.error_view.show()
-            self.error_view.setPlainText(
-                f"配置解析失败: {e}\n\n"
-                + open(entry.config_path, encoding="utf-8").read())
+            with open(entry.config_path, encoding="utf-8") as f:
+                raw_text = f.read()
+            self.error_view.setPlainText(f"配置解析失败: {e}\n\n" + raw_text)
             return
         self.error_view.hide()
         self.form_host.setEnabled(True)
@@ -179,6 +181,9 @@ class ConfigEditorPage(QWidget):
             self.raw.setChecked(True)
             self.force_period.setChecked(True)
             self.log_level.setCurrentText("Error")
+            # 若此前处于解析失败态(表单禁用/错误原文显示), 一并恢复使表单与 doc 一致
+            self.error_view.hide()
+            self.form_host.setEnabled(True)
 
     @staticmethod
     def _set_buf(pb, field: str, value: int):

@@ -58,3 +58,13 @@ def test_load_or_migrate_backs_up_corrupt(yaml_path):
     games = load_or_migrate(yaml_path)
     assert "ds2" in games
     assert os.path.isfile(yaml_path + ".bak")
+
+
+def test_load_or_migrate_recovers_bad_buffer_hint(yaml_path):
+    # buffer_hint 为非整数字符串时 int() 抛 ValueError, 应备份 .bak 并迁移恢复
+    with open(yaml_path, "w", encoding="utf-8") as f:
+        yaml.safe_dump({"games": {"bad": {"exe": r"C:\bad.exe",
+                                          "buffer_hint": "abc"}}}, f)
+    games = load_or_migrate(yaml_path)
+    assert "ds2" in games
+    assert os.path.isfile(yaml_path + ".bak")

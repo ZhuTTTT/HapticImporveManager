@@ -109,6 +109,7 @@ def load_or_migrate(path: str = paths.GAMES_YAML) -> dict[str, GameEntry]:
         return load_games(path)
     except FileNotFoundError:
         return migrate_from_launcher(path)
-    except (yaml.YAMLError, KeyError, TypeError):
+    except (yaml.YAMLError, KeyError, TypeError, ValueError):
+        # ValueError: buffer_hint 等非整数字段 int() 转换失败, 同样备份后迁移
         shutil.copy(path, path + ".bak")
         return migrate_from_launcher(path)
