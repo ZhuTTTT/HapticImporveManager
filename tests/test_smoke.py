@@ -87,3 +87,23 @@ def test_diagnostics_page(qapp, tmp_path, monkeypatch):
     assert "injected OK" in page.result_label.text()
     assert "line2" in page.log_views["injector_debug"].toPlainText()
     page.deleteLater()
+
+
+# --- Task 9 收尾断言: 新入口接线 ---
+
+
+def test_create_main_window_factory(qapp):
+    """app.py 消费的工厂接口: create_main_window() 返回可用主窗口。"""
+    from ui.main_window import MainWindow, create_main_window
+    win = create_main_window()
+    assert isinstance(win, MainWindow)
+    assert win.windowTitle() == "Haptic 低延迟管理器"
+    win.close()
+    win.deleteLater()
+
+
+def test_app_entrypoint_importable():
+    """app.py 作为入口可导入且暴露 main() (不在测试中执行事件循环)。"""
+    import importlib
+    m = importlib.import_module("app")
+    assert callable(m.main)

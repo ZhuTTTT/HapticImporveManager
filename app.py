@@ -2,13 +2,13 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
-from ui.main_window import MainWindow
+from ui.main_window import create_main_window
 
 
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("HapticImproveManager")
-    win = MainWindow()
+    win = create_main_window()
     win.show()
     sys.exit(app.exec())
 

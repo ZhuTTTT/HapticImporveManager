@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, FluentIcon,
                             InfoBar, InfoBarPosition, MessageBox,
                             PrimaryPushButton, PushButton, StrongBodyLabel,
-                            SwitchButton, TitleLabel, themeColor)
+                            SwitchButton, TitleLabel)
 
 from backend import ifeo, launcher, paths, registry
 from backend.ifeo import IfeoState
