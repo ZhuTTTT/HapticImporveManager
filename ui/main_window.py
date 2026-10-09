@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QWidget
 from qfluentwidgets import (FluentIcon, FluentWindow, NavigationItemPosition)
 
 from ui.app_config import APP_CFG, AppConfig, apply_theme
+from ui.games_page import GamesPage
 from ui.settings_page import SettingsPage
 
 
@@ -16,8 +17,8 @@ class MainWindow(FluentWindow):
         self.setWindowTitle("Haptic 低延迟管理器")
         self.resize(1100, 720)
 
-        # 占位页 — Task 5/8 替换为真实页面
-        self.games_page = _placeholder("games")
+        # diagnostics 占位页 — Task 8 替换为真实页面
+        self.games_page = GamesPage(self)
         self.diagnostics_page = _placeholder("diagnostics")
         self.settings_page = SettingsPage(cfg, self)
 
