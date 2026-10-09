@@ -34,3 +34,30 @@ def test_games_page_instantiates(qapp, tmp_path, monkeypatch):
     assert page.game_list.count() == 0
     assert page.stack.currentIndex() == 0  # 空状态
     page.deleteLater()
+
+
+def test_config_card_dirty_flow(qapp, tmp_path):
+    from backend.config import default_config, save_config, load_config
+    from backend.registry import GameEntry
+    from ui.config_card import ConfigCard
+
+    d = tmp_path / "g"
+    d.mkdir()
+    exe = d / "g.exe"
+    exe.write_text("", encoding="utf-8")
+    save_config(str(d), default_config())
+    entry = GameEntry(name="g", exe=str(exe))
+
+    card = ConfigCard()
+    card.set_game(entry)
+    assert not card.is_dirty()
+    assert not card.btn_save.isEnabled()
+
+    card.buf_normal.setValue(512)  # 模拟用户修改
+    assert card.is_dirty()
+    assert card.btn_save.isEnabled()
+
+    card.btn_save.click()
+    assert not card.is_dirty()
+    assert load_config(str(d))["playback"]["target_buffer_len"]["48000"] == 512
+    card.deleteLater()

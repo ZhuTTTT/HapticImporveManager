@@ -90,9 +90,21 @@ class GamesPage(QWidget):
             return
         name = self.game_list.item(row).text()[2:]  # 去掉 "● " 前缀
         entry = self._games.get(name)
-        if entry:
+        if entry is None:
+            return
+        if self.detail.set_game(entry):
             self.stack.setCurrentIndex(1)
-            self.detail.set_game(entry)
+        else:
+            # 用户不放弃未保存修改: 回退列表选中到详情页当前游戏
+            cur = self.detail.entry
+            if cur is None:
+                return
+            for i in range(self.game_list.count()):
+                if self.game_list.item(i).text()[2:] == cur.name:
+                    self.game_list.blockSignals(True)
+                    self.game_list.setCurrentRow(i)
+                    self.game_list.blockSignals(False)
+                    break
 
     def _on_detail_changed(self, _name: str):
         self.refresh()

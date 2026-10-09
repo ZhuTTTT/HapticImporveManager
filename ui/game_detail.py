@@ -16,6 +16,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, FluentIcon,
 
 from backend import ifeo, launcher, paths, registry
 from backend.ifeo import IfeoState
+from ui.config_card import ConfigCard
 
 
 class GameDetailPage(QWidget):
@@ -68,8 +69,9 @@ class GameDetailPage(QWidget):
             "开启后从 Steam/启动器正常启动游戏即自动注入(需 UAC 提权)。",
             self))
 
-        # 配置卡容器 — Task 6 用真实 ConfigCard 替换
-        self.config_card = QWidget(self)
+        # 配置卡
+        self.config_card = ConfigCard(self)
+        self.config_card.saved.connect(self.config_changed)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(24, 16, 24, 16)
@@ -79,7 +81,13 @@ class GameDetailPage(QWidget):
         lay.addWidget(self.config_card)
         lay.addStretch(1)
 
-    def set_game(self, entry: registry.GameEntry):
+    def set_game(self, entry: registry.GameEntry) -> bool:
+        """切换游戏; 配置卡有未保存修改时先询问, 用户取消则返回 False。"""
+        if self.config_card.is_dirty():
+            box = MessageBox("未保存修改",
+                             "当前配置有未保存修改, 放弃并切换?", self)
+            if not box.exec():
+                return False
         self._ifeo_timer.stop()  # 换游戏时停掉旧轮询
         self.entry = entry
         self.name_label.setText(entry.name)
@@ -87,6 +95,8 @@ class GameDetailPage(QWidget):
         self.path_label.setToolTip(entry.exe)
         self.anticheat_label.setVisible(entry.anticheat)
         self.refresh_status()
+        self.config_card.set_game(entry)
+        return True
 
     def refresh_status(self):
         e = self.entry
