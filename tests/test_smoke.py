@@ -11,7 +11,24 @@ def qapp():
     yield app
 
 
-def test_main_window_instantiates(qapp, tmp_path):
+def _isolate_backend_paths(tmp_path, monkeypatch):
+    """把注册表/注入器日志指向 tmp_path, 避免读真实文件。
+
+    不隔离时: 首个游戏缺 redirect_config.toml 会在 offscreen 下弹模态框,
+    pytest 无超时挂死; games.yaml 缺失还会往真实 specialk 目录写迁移文件。
+    """
+    from backend import paths
+    games_yaml = tmp_path / "games.yaml"
+    games_yaml.write_text("games: {}\n", encoding="utf-8")
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+    monkeypatch.setattr(paths, "INJECTOR_RESULT",
+                        str(tmp_path / "injector_result.txt"))
+    monkeypatch.setattr(paths, "INJECTOR_DEBUG_LOG",
+                        str(tmp_path / "injector_debug.log"))
+
+
+def test_main_window_instantiates(qapp, tmp_path, monkeypatch):
+    _isolate_backend_paths(tmp_path, monkeypatch)
     from ui.app_config import load_app_config
     from ui.main_window import MainWindow
     cfg = load_app_config(str(tmp_path / "gui.json"))
@@ -92,8 +109,9 @@ def test_diagnostics_page(qapp, tmp_path, monkeypatch):
 # --- Task 9 收尾断言: 新入口接线 ---
 
 
-def test_create_main_window_factory(qapp):
+def test_create_main_window_factory(qapp, tmp_path, monkeypatch):
     """app.py 消费的工厂接口: create_main_window() 返回可用主窗口。"""
+    _isolate_backend_paths(tmp_path, monkeypatch)  # 同 I5: 防读真实 games.yaml
     from ui.main_window import MainWindow, create_main_window
     win = create_main_window()
     assert isinstance(win, MainWindow)
@@ -107,3 +125,117 @@ def test_app_entrypoint_importable():
     import importlib
     m = importlib.import_module("app")
     assert callable(m.main)
+
+
+# --- 终审修复回归测试(2026-10-10 final-review I1–I4) ---
+
+
+class _AcceptBox:
+    """自动确认的 MessageBox 替身(qfluentwidgets.MessageBox 签名: title, content, parent)。"""
+    def __init__(self, *args, **kwargs):
+        self.yesButton = _DummyButton()
+        self.cancelButton = _DummyButton()
+
+    def exec(self):
+        return True
+
+
+class _DummyButton:
+    def setText(self, _text):
+        pass
+
+
+def _make_game(tmp_path, name):
+    """造 exe + redirect_config 齐全的游戏, 避免 ConfigCard 弹「无配置」模态框。"""
+    from backend.config import default_config, save_config
+    from backend.registry import GameEntry
+    d = tmp_path / name
+    d.mkdir()
+    exe = d / f"{name}.exe"
+    exe.write_text("", encoding="utf-8")
+    save_config(str(d), default_config())
+    return GameEntry(name=name, exe=str(exe))
+
+
+def test_game_detail_remove_stops_ifeo_poll(qapp, tmp_path, monkeypatch):
+    """I1: UAC pending 轮询期间移除游戏 — 定时器停, _poll_ifeo 不再炸。"""
+    from backend import launcher, paths, registry
+    import ui.game_detail as gd
+    monkeypatch.setattr(gd, "MessageBox", _AcceptBox)
+    entry = _make_game(tmp_path, "g")
+    games_yaml = tmp_path / "games.yaml"
+    registry.save_games({"g": entry}, str(games_yaml))
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+
+    page = gd.GameDetailPage(launcher.ProcessRunner())
+    assert page.set_game(entry)
+    page._ifeo_timer.start()  # 模拟拨 IFEO 开关后 UAC 框 pending, 轮询进行中
+    page._remove()
+    assert page.entry is None
+    assert not page._ifeo_timer.isActive()
+    assert registry.load_games(str(games_yaml)) == {}
+    page._poll_ifeo()  # entry=None 时守卫直接返回, 不得抛 AttributeError
+    page.deleteLater()
+
+
+def test_config_card_save_info_log_level(qapp, tmp_path, monkeypatch):
+    """I2: 选 Info 经警告对话框确认后, 保存放行 log_level 校验条目。"""
+    from backend.config import load_config
+    import ui.config_card as cc
+    monkeypatch.setattr(cc, "MessageBox", _AcceptBox)  # 挡掉 Info 警告对话框
+    entry = _make_game(tmp_path, "g")
+
+    card = cc.ConfigCard()
+    card.set_game(entry)
+    card.log_box.setCurrentText("Info")  # 触发警告(替身自动确认)
+    assert card.is_dirty()
+    card.btn_save.click()
+    assert not card.is_dirty()  # 校验不再因 log_level 拒存
+    assert load_config(str(tmp_path / "g"))["log_level"] == "Info"
+    card.deleteLater()
+
+
+def test_games_page_refresh_keeps_selection(qapp, tmp_path, monkeypatch):
+    """I3: 保存配置触发 refresh 后仍选中原游戏, 不跳回列表第一款。"""
+    from backend import paths, registry
+    g1 = _make_game(tmp_path, "g1")
+    g2 = _make_game(tmp_path, "g2")
+    games_yaml = tmp_path / "games.yaml"
+    registry.save_games({"g1": g1, "g2": g2}, str(games_yaml))
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+
+    from ui.games_page import GamesPage
+    page = GamesPage()
+    page.game_list.setCurrentRow(1)  # 选中第二款
+    assert page.detail.entry.name == "g2"
+    page.refresh()  # 模拟 saved → config_changed → refresh
+    assert page.game_list.currentRow() == 1
+    assert page.detail.entry.name == "g2"
+    page.deleteLater()
+
+
+def test_settings_page_change_dir_emit_on_no_sync(qapp, tmp_path, monkeypatch):
+    """I4: 选「仅以后生效」(不同步游戏)也要发 log_dir_changed。"""
+    from backend import paths
+    import ui.settings_page as sp
+    games_yaml = tmp_path / "games.yaml"
+    games_yaml.write_text("games: {}\n", encoding="utf-8")
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+    new_dir = str(tmp_path / "new_logs")
+    monkeypatch.setattr(sp.QFileDialog, "getExistingDirectory",
+                        staticmethod(lambda *a, **k: new_dir))
+
+    class _DeclineBox(_AcceptBox):
+        def exec(self):
+            return False  # 用户选「仅以后生效」
+    monkeypatch.setattr(sp, "MessageBox", _DeclineBox)
+
+    from ui.app_config import load_app_config
+    cfg = load_app_config(str(tmp_path / "gui.json"))
+    page = sp.SettingsPage(cfg)
+    seen = []
+    page.log_dir_changed.connect(seen.append)
+    page._change_dir()
+    assert cfg.log_dir.value == new_dir
+    assert seen == [new_dir]  # 修复前: 此分支不发信号, 诊断页 watcher 停在旧路径
+    page.deleteLater()

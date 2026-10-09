@@ -110,7 +110,8 @@ class SettingsPage(QWidget):
                 InfoBar.success("已同步", f"已更新 {ok} 个游戏的配置",
                                 parent=self, position=InfoBarPosition.TOP,
                                 duration=3000)
-            self.log_dir_changed.emit(d)
+        # 无论是否批量同步, 设置里的目录已变 — 诊断页 watcher 需重建到新路径
+        self.log_dir_changed.emit(d)
 
     def _open_dir(self):
         d = self.cfg.log_dir.value

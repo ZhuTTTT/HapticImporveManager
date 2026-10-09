@@ -279,6 +279,9 @@ class ConfigCard(CardWidget):
         state = self._current_state()
         apply_form(self.doc, state)
         problems = config.validate(self.doc)
+        # backend validate 硬性要求 log_level=Error, 作为兜底防手改配置;
+        # UI 层用户选 Info 时已在警告对话框知情确认, 故过滤该条目放行。
+        problems = [p for p in problems if "log_level" not in p]
         if problems:
             InfoBar.warning("校验失败", "\n".join(problems),
                             parent=self, position=InfoBarPosition.TOP,

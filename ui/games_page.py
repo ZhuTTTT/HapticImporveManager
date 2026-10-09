@@ -66,6 +66,8 @@ class GamesPage(QWidget):
         self.refresh()
 
     def refresh(self):
+        # 记住当前上下文, 重建列表后按名恢复选中(保存配置不跳回第一款)
+        prev = self.detail.entry.name if self.detail.entry is not None else None
         self._games = registry.load_or_migrate(str(paths.GAMES_YAML))
         self.game_list.blockSignals(True)
         self.game_list.clear()
@@ -75,7 +77,13 @@ class GamesPage(QWidget):
             QListWidgetItem(mark + name, self.game_list)
         self.game_list.blockSignals(False)
         if self._games:
-            self.game_list.setCurrentRow(0)
+            row = 0
+            if prev is not None:
+                for i in range(self.game_list.count()):
+                    if self.game_list.item(i).text()[2:] == prev:
+                        row = i
+                        break
+            self.game_list.setCurrentRow(row)
             self.stack.setCurrentIndex(1)
         else:
             self.stack.setCurrentIndex(0)

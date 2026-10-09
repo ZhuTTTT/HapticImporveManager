@@ -127,6 +127,10 @@ class GameDetailPage(QWidget):
         self._ifeo_timer.start()
 
     def _poll_ifeo(self):
+        # 移除游戏后定时器可能仍在跑: 先守卫, 避免解引用 None 刷异常
+        if self.entry is None:
+            self._ifeo_timer.stop()
+            return
         self._poll_count += 1
         state = ifeo.query_ifeo(os.path.basename(self.entry.exe))
         want = IfeoState.ON_OURS if self.ifeo_switch.isChecked() \
@@ -150,6 +154,7 @@ class GameDetailPage(QWidget):
                          f"从列表移除 {self.entry.name}?\n"
                          "(不动游戏文件和 IFEO 设置)", self)
         if box.exec():
+            self._ifeo_timer.stop()  # 移除即停轮询, entry 置 None 后不再触发
             registry.remove_game(self.entry.name, str(paths.GAMES_YAML))
             self.entry = None
             self.config_changed.emit("")  # 空串 = 当前游戏被移除, 请刷新
