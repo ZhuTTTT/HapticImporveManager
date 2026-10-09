@@ -1,5 +1,8 @@
+import os
+
 import pytest
 import tomlkit
+from backend import paths
 from backend.config import (MODES, default_config, config_file, load_config,
                             save_config, validate)
 
@@ -52,3 +55,34 @@ def test_validate_enforces_error_log_level():
     doc["log_level"] = "Info"
     problems = validate(doc)
     assert any("log_level" in p for p in problems)
+
+
+def test_default_config_with_log_dir():
+    from backend.config import default_config
+    doc = default_config(log_dir="D:/mylogs")
+    assert doc["log_path"] == "D:/mylogs"
+    assert validate(doc) == []
+
+
+def test_default_config_no_arg_unchanged():
+    from backend.config import default_config
+    doc = default_config()
+    assert doc["log_path"] == paths.RELINK_LOG_DIR.replace(os.sep, "/")
+
+
+def test_set_log_dir(tmp_path):
+    from backend.config import set_log_dir
+    cfg = tmp_path / "redirect_config.toml"
+    cfg.write_text('# 注释\nlog_path = "C:/old"\nlog_level = "Error"\n',
+                   encoding="utf-8")
+    set_log_dir(str(tmp_path), "D:/new")
+    out = cfg.read_text(encoding="utf-8")
+    assert 'log_path = "D:/new"' in out
+    assert "# 注释" in out  # 注释保留
+
+
+def test_set_log_dir_missing_raises(tmp_path):
+    from backend.config import set_log_dir
+    import pytest as _pt
+    with _pt.raises(FileNotFoundError):
+        set_log_dir(str(tmp_path), "D:/new")

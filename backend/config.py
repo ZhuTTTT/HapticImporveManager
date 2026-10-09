@@ -16,9 +16,11 @@ from . import paths
 
 MODES = ("Normal", "Ringbuf", "Compat", "Bypass")
 
-_DEFAULT_TEXT = f'''\
+def _default_text(log_dir: str | None = None) -> str:
+    log_path = (log_dir or paths.RELINK_LOG_DIR).replace(os.sep, "/")
+    return f'''\
 # wasapi_relink 配置 — 由 HapticImproveManager 生成
-log_path = "{paths.RELINK_LOG_DIR.replace(os.sep, "/")}"
+log_path = "{log_path}"
 log_level = "Error"        # 必须 Error! Info 在溢出时会写 GB 级日志
 only_log_stdout = false
 
@@ -35,8 +37,16 @@ mode = "Bypass"
 '''
 
 
-def default_config() -> TOMLDocument:
-    return tomlkit.parse(_DEFAULT_TEXT)
+def default_config(log_dir: str | None = None) -> TOMLDocument:
+    """log_dir 缺省保持 paths.RELINK_LOG_DIR(现状不变)。"""
+    return tomlkit.parse(_default_text(log_dir))
+
+
+def set_log_dir(game_dir: str, log_dir: str) -> None:
+    """原位改 redirect_config.toml 的 log_path, 保留注释。"""
+    doc = load_config(game_dir)  # 缺失抛 FileNotFoundError, 损坏抛解析异常
+    doc["log_path"] = log_dir.replace(os.sep, "/")
+    save_config(game_dir, doc)
 
 
 def config_file(game_dir: str) -> str:
