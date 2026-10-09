@@ -1,54 +1,44 @@
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget, QMainWindow,
-                               QStackedWidget, QWidget)
+"""主窗口: FluentWindow + 导航(游戏/诊断/设置) + 主题与 Mica。"""
+from __future__ import annotations
 
-from ui.config_editor import ConfigEditorPage
-from ui.games_page import GamesPage
-from ui.monitor_page import MonitorPage
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget
+from qfluentwidgets import (FluentIcon, FluentWindow, NavigationItemPosition)
+
+from ui.app_config import APP_CFG, AppConfig, apply_theme
+from ui.settings_page import SettingsPage
 
 
-class MainWindow(QMainWindow):
-    def __init__(self):
+class MainWindow(FluentWindow):
+    def __init__(self, cfg: AppConfig = APP_CFG):
         super().__init__()
+        self.cfg = cfg
         self.setWindowTitle("Haptic 低延迟管理器")
-        self.resize(1000, 640)
+        self.resize(1100, 720)
 
-        self.nav = QListWidget()
-        self.nav.setFixedWidth(140)
-        self.nav.addItems(["游戏", "配置编辑", "状态监控"])
+        # 占位页 — Task 5/8 替换为真实页面
+        self.games_page = _placeholder("games")
+        self.diagnostics_page = _placeholder("diagnostics")
+        self.settings_page = SettingsPage(cfg, self)
 
-        self.pages = QStackedWidget()
-        # 占位页, 后续任务按索引替换为真实页面
-        self.pages.addWidget(QLabel("游戏列表(待实现)"))
-        self.pages.addWidget(QLabel("配置编辑(待实现)"))
-        self.pages.addWidget(QLabel("状态监控(待实现)"))
+        self.addSubInterface(self.games_page, FluentIcon.GAME, "游戏")
+        self.addSubInterface(self.diagnostics_page, FluentIcon.SPEED_HIGH,
+                             "诊断")
+        self.addSubInterface(self.settings_page, FluentIcon.SETTING, "设置",
+                             position=NavigationItemPosition.BOTTOM)
 
-        self.games_page = GamesPage()
-        self.replace_page(0, self.games_page)
+        apply_theme(cfg)
+        self.apply_mica()
 
-        self.config_page = ConfigEditorPage()
-        self.replace_page(1, self.config_page)
-        self.games_page.edit_requested.connect(self._goto_config)
+    def apply_mica(self):
+        self.setMicaEffectEnabled(bool(self.cfg.mica_enabled.value))
 
-        self.monitor_page = MonitorPage()
-        self.replace_page(2, self.monitor_page)
-        self.games_page.runner.line.connect(self.monitor_page.append_event)
 
-        self.nav.currentRowChanged.connect(self.pages.setCurrentIndex)
-        self.nav.setCurrentRow(0)
+def _placeholder(name: str) -> QWidget:
+    w = QWidget()
+    w.setObjectName(name)
+    return w
 
-        central = QWidget()
-        lay = QHBoxLayout(central)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(self.nav)
-        lay.addWidget(self.pages, 1)
-        self.setCentralWidget(central)
 
-    def replace_page(self, index: int, widget: QWidget):
-        old = self.pages.widget(index)
-        self.pages.removeWidget(old)
-        old.deleteLater()
-        self.pages.insertWidget(index, widget)
-
-    def _goto_config(self, name: str):
-        self.config_page.select_game(name)
-        self.nav.setCurrentRow(1)
+def create_main_window() -> MainWindow:
+    return MainWindow()
