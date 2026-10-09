@@ -71,3 +71,19 @@ def test_config_card_dirty_flow(qapp, tmp_path):
     assert not card.is_dirty()
     assert load_config(str(d))["playback"]["target_buffer_len"]["48000"] == 512
     card.deleteLater()
+
+
+def test_diagnostics_page(qapp, tmp_path, monkeypatch):
+    from backend import paths, monitor
+    result = tmp_path / "injector_result.txt"
+    result.write_text("injected OK: test", encoding="utf-8")
+    dbg = tmp_path / "injector_debug.log"
+    dbg.write_text("line1\nline2\n", encoding="utf-8")
+    monkeypatch.setattr(paths, "INJECTOR_RESULT", str(result))
+    monkeypatch.setattr(paths, "INJECTOR_DEBUG_LOG", str(dbg))
+
+    from ui.diagnostics_page import DiagnosticsPage
+    page = DiagnosticsPage()
+    assert "injected OK" in page.result_label.text()
+    assert "line2" in page.log_views["injector_debug"].toPlainText()
+    page.deleteLater()
