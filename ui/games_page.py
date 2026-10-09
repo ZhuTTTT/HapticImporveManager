@@ -110,7 +110,6 @@ class GamesPage(QWidget):
         self.refresh()
 
     def _add_game(self):
-        # Task 7 实现 AddGameDialog 后接线; 当前为占位
-        from qfluentwidgets import InfoBar, InfoBarPosition
-        InfoBar.info("添加游戏", "向导将在后续任务中实现",
-                     parent=self, position=InfoBarPosition.TOP, duration=2000)
+        from ui.add_game_dialog import AddGameDialog
+        if AddGameDialog(self).exec():
+            self.refresh()

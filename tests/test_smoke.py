@@ -2,7 +2,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 
 @pytest.fixture(scope="session")
@@ -34,6 +34,16 @@ def test_games_page_instantiates(qapp, tmp_path, monkeypatch):
     assert page.game_list.count() == 0
     assert page.stack.currentIndex() == 0  # 空状态
     page.deleteLater()
+
+
+def test_add_game_dialog_instantiates(qapp):
+    from ui.add_game_dialog import AddGameDialog
+    # MessageBoxBase(MaskDialogBase) 要求 parent 非空: __init__ 用 parent 定几何
+    host = QWidget()
+    dlg = AddGameDialog(host)
+    assert dlg.stack.count() == 4
+    dlg.deleteLater()
+    host.deleteLater()
 
 
 def test_config_card_dirty_flow(qapp, tmp_path):
