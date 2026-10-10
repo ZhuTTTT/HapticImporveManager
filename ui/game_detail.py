@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, FluentIcon,
                             InfoBar, InfoBarPosition, MessageBox,
@@ -16,6 +16,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, FluentIcon,
 
 from backend import ifeo, launcher, paths, registry
 from backend.ifeo import IfeoState
+from ui import theme
 from ui.config_card import ConfigCard
 
 
@@ -31,26 +32,27 @@ class GameDetailPage(QWidget):
         self._ifeo_timer.timeout.connect(self._poll_ifeo)
         self._poll_count = 0
 
-        # 头部
+        # 头部: 左侧游戏名+路径, 右侧操作按钮
         self.name_label = TitleLabel("", self)
         self.path_label = CaptionLabel("", self)
         self.btn_launch = PrimaryPushButton(FluentIcon.PLAY, "启动游戏", self)
         self.btn_launch.clicked.connect(self._launch)
         self.btn_remove = PushButton(FluentIcon.DELETE, "移除", self)
         self.btn_remove.clicked.connect(self._remove)
-        head_btns = QHBoxLayout()
-        head_btns.addStretch(1)
-        head_btns.addWidget(self.btn_launch)
-        head_btns.addWidget(self.btn_remove)
-        head = QVBoxLayout()
-        head.addWidget(self.name_label)
-        head.addWidget(self.path_label)
-        head.addLayout(head_btns)
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
+        title_col.addWidget(self.name_label)
+        title_col.addWidget(self.path_label)
+        head = QHBoxLayout()
+        head.addLayout(title_col, 1)
+        head.addWidget(self.btn_launch, 0, Qt.AlignmentFlag.AlignTop)
+        head.addWidget(self.btn_remove, 0, Qt.AlignmentFlag.AlignTop)
 
         # 状态卡
         self.status_card = CardWidget(self)
         sc = QVBoxLayout(self.status_card)
         self.status_badge = BodyLabel("", self)
+        self.status_badge.setAutoFillBackground(False)
         self.anticheat_label = CaptionLabel(
             "⚠ 检测到反作弊特征, 注入有账号封禁风险", self)
         self.ifeo_switch = SwitchButton(self)
@@ -62,7 +64,10 @@ class GameDetailPage(QWidget):
         ifeo_row.addStretch(1)
         ifeo_row.addWidget(self.ifeo_switch)
         sc.addWidget(StrongBodyLabel("状态", self))
-        sc.addWidget(self.status_badge)
+        badge_row = QHBoxLayout()  # 徽章是胶囊, 不拉伸
+        badge_row.addWidget(self.status_badge, 0)
+        badge_row.addStretch(1)
+        sc.addLayout(badge_row)
         sc.addWidget(self.anticheat_label)
         sc.addLayout(ifeo_row)
         sc.addWidget(CaptionLabel(
@@ -73,12 +78,20 @@ class GameDetailPage(QWidget):
         self.config_card = ConfigCard(self)
         self.config_card.saved.connect(self.config_changed)
 
-        lay = QVBoxLayout(self)
+        # 内容列: 最大宽度居中, 宽窗口下不拉伸成"大通铺"
+        container = QWidget(self)
+        cl = QVBoxLayout(container)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(12)
+        cl.addLayout(head)
+        cl.addWidget(self.status_card)
+        cl.addWidget(self.config_card)
+        cl.addStretch(1)
+        container.setMaximumWidth(760)
+        lay = QHBoxLayout(self)
         lay.setContentsMargins(24, 16, 24, 16)
-        lay.setSpacing(12)
-        lay.addLayout(head)
-        lay.addWidget(self.status_card)
-        lay.addWidget(self.config_card)
+        lay.addStretch(1)
+        lay.addWidget(container, 8)
         lay.addStretch(1)
 
     def set_game(self, entry: registry.GameEntry) -> bool:
@@ -104,15 +117,16 @@ class GameDetailPage(QWidget):
             return
         state = ifeo.query_ifeo(os.path.basename(e.exe))
         if not e.exe_exists:
-            text, tip = "● exe 丢失", "找不到游戏可执行文件, 请检查路径"
+            level, text, tip = "err", "exe 丢失", "找不到游戏可执行文件, 请检查路径"
         elif e.config_exists and state == IfeoState.ON_OURS:
-            text, tip = "● 就绪", "配置与 IFEO 均已就位"
+            level, text, tip = "ok", "就绪", "配置与 IFEO 均已就位"
         else:
-            text, tip = "● 未完成", "配置或 IFEO 未就位"
+            level, text, tip = "warn", "未完成", "配置或 IFEO 未就位"
         if state == IfeoState.ON_OTHER:
-            text += "(IFEO 被其他调试器占用!)"
+            level, text = "err", text + "(IFEO 被其他调试器占用!)"
         self.status_badge.setText(text)
         self.status_badge.setToolTip(tip)
+        self.status_badge.setStyleSheet(theme.pill_style(level))
         self.ifeo_switch.blockSignals(True)
         self.ifeo_switch.setChecked(state == IfeoState.ON_OURS)
         self.ifeo_switch.blockSignals(False)

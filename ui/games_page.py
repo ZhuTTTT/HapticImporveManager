@@ -1,15 +1,53 @@
-"""游戏中心主页: 左列表(搜索过滤) + 右详情(选中即上下文)。"""
+"""游戏中心主页: 左列表(搜索过滤 + 状态点列表项) + 右详情(选中即上下文)。"""
 from __future__ import annotations
+
+import os
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QListWidgetItem, QStackedWidget,
                                QVBoxLayout, QWidget)
-from qfluentwidgets import (CaptionLabel, FluentIcon, ListWidget,
-                            PrimaryPushButton, SearchLineEdit,
+from qfluentwidgets import (BodyLabel, CaptionLabel, FluentIcon, IconWidget,
+                            ListWidget, PrimaryPushButton, SearchLineEdit,
                             StrongBodyLabel)
 
-from backend import launcher, paths, registry
+from backend import ifeo, launcher, paths, registry
+from backend.ifeo import IfeoState
+from ui import theme
 from ui.game_detail import GameDetailPage
+
+
+def _status_level(entry: registry.GameEntry) -> str:
+    """列表状态点语义: err=exe 丢失, ok=就绪(配置+IFEO 就位), warn=其余。"""
+    if not entry.exe_exists:
+        return "err"
+    if entry.config_exists and ifeo.query_ifeo(
+            os.path.basename(entry.exe)) == IfeoState.ON_OURS:
+        return "ok"
+    return "warn"
+
+
+class _GameItemWidget(QWidget):
+    """列表项: 语义色状态点 + 游戏名 + 模式提示。"""
+
+    def __init__(self, entry: registry.GameEntry, level: str, parent=None):
+        super().__init__(parent)
+        dot = QWidget(self)
+        dot.setFixedSize(10, 10)
+        c = theme.status_color(level)
+        dot.setStyleSheet(f"background: {c}; border-radius: 5px;")
+        name = BodyLabel(entry.name, self)
+        hint = CaptionLabel(f"{entry.mode_hint} · {entry.buffer_hint} 帧",
+                            self)
+        text_col = QVBoxLayout()
+        text_col.setContentsMargins(0, 0, 0, 0)
+        text_col.setSpacing(0)
+        text_col.addWidget(name)
+        text_col.addWidget(hint)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(8, 6, 8, 6)
+        lay.addWidget(dot, 0, Qt.AlignmentFlag.AlignVCenter)
+        lay.addLayout(text_col, 1)
+        lay.addStretch(0)
 
 
 class GamesPage(QWidget):
@@ -31,17 +69,22 @@ class GamesPage(QWidget):
 
         left = QVBoxLayout()
         left.setContentsMargins(0, 0, 0, 0)
+        left.setSpacing(8)
         left.addWidget(self.search)
         left.addWidget(self.game_list, 1)
         left.addWidget(self.btn_add)
         left_host = QWidget(self)
         left_host.setLayout(left)
-        left_host.setFixedWidth(220)
+        left_host.setFixedWidth(240)
 
-        # 空状态
+        # 空状态: 图标 + 引导
         empty = QWidget(self)
         el = QVBoxLayout(empty)
         el.addStretch(1)
+        icon = IconWidget(FluentIcon.GAME, empty)
+        icon.setFixedSize(64, 64)
+        el.addWidget(icon, 0, Qt.AlignmentFlag.AlignCenter)
+        el.addSpacing(12)
         t = StrongBodyLabel("还没有游戏", empty)
         t.setAlignment(Qt.AlignmentFlag.AlignCenter)
         c = CaptionLabel("点击左下角「添加游戏」, 四步完成接入", empty)
@@ -65,6 +108,10 @@ class GamesPage(QWidget):
         self._games: dict[str, registry.GameEntry] = {}
         self.refresh()
 
+    def _item_name(self, row: int) -> str | None:
+        item = self.game_list.item(row)
+        return item.data(Qt.ItemDataRole.UserRole) if item else None
+
     def refresh(self):
         # 记住当前上下文, 重建列表后按名恢复选中(保存配置不跳回第一款)
         prev = self.detail.entry.name if self.detail.entry is not None else None
@@ -72,15 +119,17 @@ class GamesPage(QWidget):
         self.game_list.blockSignals(True)
         self.game_list.clear()
         for name, entry in self._games.items():
-            mark = "● " if (entry.exe_exists and entry.config_exists) \
-                else "○ "
-            QListWidgetItem(mark + name, self.game_list)
+            item = QListWidgetItem(self.game_list)
+            item.setData(Qt.ItemDataRole.UserRole, name)
+            w = _GameItemWidget(entry, _status_level(entry))
+            item.setSizeHint(w.sizeHint())
+            self.game_list.setItemWidget(item, w)
         self.game_list.blockSignals(False)
         if self._games:
             row = 0
             if prev is not None:
                 for i in range(self.game_list.count()):
-                    if self.game_list.item(i).text()[2:] == prev:
+                    if self._item_name(i) == prev:
                         row = i
                         break
             self.game_list.setCurrentRow(row)
@@ -91,13 +140,13 @@ class GamesPage(QWidget):
     def _filter(self, text: str):
         for i in range(self.game_list.count()):
             item = self.game_list.item(i)
-            item.setHidden(text.lower() not in item.text().lower())
+            item.setHidden(text.lower() not in
+                           str(self._item_name(i)).lower())
 
     def _on_select(self, row: int):
         if row < 0:
             return
-        name = self.game_list.item(row).text()[2:]  # 去掉 "● " 前缀
-        entry = self._games.get(name)
+        entry = self._games.get(self._item_name(row))
         if entry is None:
             return
         if self.detail.set_game(entry):
@@ -108,7 +157,7 @@ class GamesPage(QWidget):
             if cur is None:
                 return
             for i in range(self.game_list.count()):
-                if self.game_list.item(i).text()[2:] == cur.name:
+                if self._item_name(i) == cur.name:
                     self.game_list.blockSignals(True)
                     self.game_list.setCurrentRow(i)
                     self.game_list.blockSignals(False)

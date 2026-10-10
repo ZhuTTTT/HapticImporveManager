@@ -15,6 +15,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, Pivot,
                             TitleLabel)
 
 from backend import monitor, paths
+from ui import theme
 from ui.app_config import APP_CFG
 
 _TAIL_LINES = 200
@@ -31,6 +32,7 @@ class DiagnosticsPage(QWidget):
         rc.addWidget(StrongBodyLabel("最近注入", self.result_card))
         self.result_label = BodyLabel("", self.result_card)
         self.result_label.setWordWrap(True)
+        self.result_label.setFont(theme.mono_font())
         rc.addWidget(self.result_label)
 
         # 日志选项卡
@@ -47,6 +49,7 @@ class DiagnosticsPage(QWidget):
             view = PlainTextEdit(host)
             view.setReadOnly(True)
             view.setMaximumBlockCount(500)
+            view.setFont(theme.mono_font(9))  # 日志 = 测量数据, 等宽
             vl.addWidget(view)
             self.log_views[key] = view
             self.stack.addWidget(host)

@@ -13,20 +13,28 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtWidgets import (QFormLayout, QGridLayout, QHBoxLayout,
                                QVBoxLayout, QWidget)
 from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, ComboBox,
-                            InfoBar, InfoBarPosition, MessageBox,
-                            PlainTextEdit, PrimaryPushButton, PushButton,
-                            Slider, SpinBox, StateToolTip, StrongBodyLabel,
-                            SwitchButton, themeColor)
+                            FluentIcon, IconWidget, InfoBar, InfoBarPosition,
+                            MessageBox, PlainTextEdit, PrimaryPushButton,
+                            PushButton, Slider, SpinBox, StateToolTip,
+                            StrongBodyLabel, SwitchButton)
 
 from backend import config, launcher
 from backend.registry import GameEntry
+from ui import theme
 from ui.app_config import APP_CFG
 from ui.config_model import (MODE_INFO, FormState, apply_form, frames_to_ms,
                              hus_to_ms, load_form)
 
+_MODE_ICONS = {  # 模式卡的语义图标
+    "Normal": FluentIcon.SPEED_HIGH,     # 低延迟 = 速度
+    "Ringbuf": FluentIcon.SYNC,          # 环形缓冲
+    "Compat": FluentIcon.DEVELOPER_TOOLS,
+    "Bypass": FluentIcon.SKIP_FORWARD,   # 直通不干预
+}
+
 
 class _ModeCard(CardWidget):
-    """单个模式选择卡: 标题 + 一句话简介; 点击选中。"""
+    """单个模式选择卡: 图标 + 标题 + 一句话简介; 点击选中。"""
     clicked = Signal(str)
 
     def __init__(self, mode: str, parent=None):
@@ -34,8 +42,15 @@ class _ModeCard(CardWidget):
         self.mode = mode
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         info = MODE_INFO[mode]
+        icon = IconWidget(_MODE_ICONS[mode], self)
+        icon.setFixedSize(20, 20)
+        head = QHBoxLayout()
+        head.setContentsMargins(0, 0, 0, 0)
+        head.addWidget(icon)
+        head.addWidget(StrongBodyLabel(info["title"], self))
+        head.addStretch(1)
         lay = QVBoxLayout(self)
-        lay.addWidget(StrongBodyLabel(info["title"], self))
+        lay.addLayout(head)
         brief = CaptionLabel(info["brief"], self)
         brief.setWordWrap(True)
         lay.addWidget(brief)
@@ -45,10 +60,14 @@ class _ModeCard(CardWidget):
         super().mouseReleaseEvent(e)
 
     def set_selected(self, on: bool):
-        # 用主题色描边表达选中, 不写死颜色(深色适配)
-        c = themeColor().name()
-        self.setStyleSheet(
-            f"_ModeCard {{ border: 2px solid {c}; }}" if on else "")
+        # 选中 = 主题色描边 + 淡底, 用主题令牌不写死颜色(深色适配)
+        if on:
+            c = theme.ACCENT
+            self.setStyleSheet(
+                f"_ModeCard {{ border: 1px solid {c};"
+                f" background: {theme.accent_tint(0.10)}; }}")
+        else:
+            self.setStyleSheet("")
 
 
 class _SaveWorker(QObject):
@@ -118,6 +137,7 @@ class ConfigCard(CardWidget):
         self.period_slider = Slider(Qt.Orientation.Horizontal, self)
         self.period_slider.setRange(0, 1000)
         self.period_label = BodyLabel("", self)
+        self.period_label.setFont(theme.mono_font())  # 测量数字用等宽
         self.period_slider.valueChanged.connect(self._on_period)
         period_row = QHBoxLayout()
         period_row.addWidget(self.period_slider, 1)
@@ -126,6 +146,7 @@ class ConfigCard(CardWidget):
         self.buf_normal = SpinBox(self)
         self.buf_normal.setRange(1, 65536)
         self.buf_normal_ms = CaptionLabel("", self)
+        self.buf_normal_ms.setFont(theme.mono_font(9))
         self.buf_normal.valueChanged.connect(self._on_buf_normal)
         bn_host = QWidget(self)
         bn_row = QHBoxLayout(bn_host)
@@ -142,6 +163,7 @@ class ConfigCard(CardWidget):
         self.buf_ring = SpinBox(self)
         self.buf_ring.setRange(1, 65536)
         self.buf_ring_ms = CaptionLabel("", self)
+        self.buf_ring_ms.setFont(theme.mono_font(9))
         self.buf_ring.valueChanged.connect(self._on_buf_ring)
         br_host = QWidget(self)
         br_row = QHBoxLayout(br_host)

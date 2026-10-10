@@ -7,6 +7,7 @@ from ui.app_config import APP_CFG, AppConfig, apply_theme
 from ui.diagnostics_page import DiagnosticsPage
 from ui.games_page import GamesPage
 from ui.settings_page import SettingsPage
+from ui.theme import apply_accent
 
 
 class MainWindow(FluentWindow):
@@ -15,6 +16,8 @@ class MainWindow(FluentWindow):
         self.cfg = cfg
         self.setWindowTitle("Haptic 低延迟管理器")
         self.resize(1100, 720)
+
+        apply_accent()  # 先设强调色, 再建页面, 组件即刻吃到主题色
 
         self.games_page = GamesPage(self)
         self.diagnostics_page = DiagnosticsPage(self)
