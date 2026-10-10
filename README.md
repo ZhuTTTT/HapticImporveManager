@@ -1,38 +1,81 @@
 # HapticImproveManager
 
-DualSense haptic 低延迟注入系统的可视化管理器。
-包装 `C:\Users\ZhuTT\Workspace\specialk\` 下的 injector.py / haptic_launcher.py。
+DualSense 触觉(haptic)低延迟注入系统的可视化管理器 — 把 PC 游戏写给手柄的
+haptic 音频缓冲从原生 20–85ms 压到 ~10ms,用图形界面管理整个注入链路。
 
-## 运行
-    python -m pip install -r requirements.txt
-    python app.py
+![深色主题](docs/screenshots/dark.png)
+
+<details>
+<summary>浅色主题截图</summary>
+
+![浅色主题](docs/screenshots/light.png)
+</details>
 
 ## 功能
-- 游戏中心: 左侧游戏列表, 右侧详情(状态/IFEO 开关/启动/配置编辑), 选中即上下文
-- 注入配置通俗化: 模式四选一卡片(Normal/Ringbuf/Compat/Bypass)带白话说明,
-  缓冲帧数实时换算毫秒
-- 添加游戏向导: exe 选择 → 反作弊检测 → 生成 redirect_config.toml → 开 IFEO
-- 诊断: 最近注入结果 + injector_debug.log / wasapi_relink.log 尾随,
-  一键在资源管理器打开
-- 设置: 浅色/深色/跟随系统主题, Mica 云母背景, 日志目录可改并批量同步到所有游戏
+
+- **游戏中心**:左侧游戏列表(状态点 + 搜索),右侧详情页,选中即上下文——
+  状态徽章、IFEO 自动注入开关、启动游戏、注入配置都归属于当前游戏
+- **注入配置通俗化**:四种模式(普通 / 虚拟缓冲 / 兼容 / 不干预)卡片式单选,
+  每项配置带白话说明,缓冲帧数实时换算毫秒,不适用当前模式的项自动隐藏
+- **添加游戏向导**:选择 exe → 反作弊特征检测(HoYoKProtect/EAC/BattlEye 风险提示)
+  → 生成 `redirect_config.toml` → 一键开启 IFEO
+- **诊断页**:最近注入结果 + `injector_debug.log` / `wasapi_relink.log` 尾随监视,
+  一键在资源管理器中打开
+- **设置页**:浅色 / 深色 / 跟随系统主题,Mica 云母背景,日志目录可更改并
+  批量同步到所有已注册游戏
+
+## 安装与运行
+
+### 方式一:下载成品(推荐)
+
+从 [Releases](../../releases) 下载 `HapticImproveManager.zip`,解压后双击
+`HapticImproveManager.exe`(整目录拷走才可用,勿只拷 exe)。
+
+> 注意:exe 只打包了 GUI。「启动游戏 / IFEO 开关」依赖系统装有 Python 且
+> 在 PATH 中可见(优先找 `pythonw`,再找 `python`),因为注入链仍在外部
+> specialk 项目中。找不到 Python 时仍可浏览配置,仅启动/IFEO 子进程会失败。
+
+### 方式二:源码运行
+
+要求 Windows 10/11 + Python 3.11+:
+
+```bash
+python -m pip install -r requirements.txt
+python app.py
+```
+
+## 工作原理
+
+PC 游戏把 DualSense haptic 渲染成音频流,经 WASAPI 共享模式送入手柄音频端点
+(4 声道:ch1/2 = 扬声器,ch3/4 = haptic 马达)。游戏申请的音频缓冲
+(20–85ms)是 haptic 延迟的主要来源。
+
+本工具管理的外部注入链(specialk 项目的 `injector.py` / `haptic_launcher.py`)
+把 [wasapi_relink](https://github.com/Litttlefish/wasapi_relink) DLL 注入游戏进程,
+在 WASAPI 层面压缩缓冲、约束写入节奏。本 GUI 负责游戏注册、配置编辑
+(`redirect_config.toml`)、IFEO 自动注入管理与日志诊断。
 
 ## 架构
-薄 GUI(PySide6 + qfluentwidgets)+ 子进程后端。
-GUI 普通权限运行; ifeo on/off 由 haptic_launcher 自行 UAC 提权。
-游戏注册表: specialk/games.yaml(GUI 与 CLI 共用)。
-ui/config_model.py 为表单↔TOML 纯函数映射(可单测);
-GUI 设置(主题/日志目录)存 %APPDATA%/HapticImproveManager/gui_config.json。
+
+薄 GUI(PySide6 + [PySide6-Fluent-Widgets](https://github.com/zhiyiYo/PySide6-Fluent-Widgets))
++ 子进程后端。GUI 普通权限运行;IFEO 开关由 launcher 自行 UAC 提权。
+
+- 游戏注册表 `games.yaml` 由 GUI 与 CLI 共用
+- `ui/config_model.py` 是表单 ↔ TOML 的纯函数映射(可单测,保留注释)
+- GUI 设置(主题 / 日志目录)存 `%APPDATA%/HapticImproveManager/gui_config.json`
+- 设计与实现文档见 `docs/superpowers/`
 
 ## 测试
-    python -m pytest tests/ -v
 
-## 打包 exe
-    packaging\build_exe.bat
+```bash
+python -m pytest tests/ -v
+```
 
-产出 `dist\HapticImproveManager\`, 双击其中 `HapticImproveManager.exe` 即可运行
-(onedir 模式, 整目录拷走才可用, 勿只拷 exe)。
+## 自行打包 exe
 
-注意: 冻结态下「启动游戏 / IFEO 开关」依赖系统装有 Python 且 PATH 可见
-(backend 会优先找 pythonw, 再找 python)——injector 链仍在外部 specialk 项目,
-exe 只打包 GUI 自身。系统找不到 Python 时仍可浏览配置, 仅启动/IFEO 子进程失败
-(日志可见报错)。
+```cmd
+packaging\build_exe.bat
+```
+
+产出 `dist\HapticImproveManager\`(onedir 模式)。脚本在构建失败时会明确
+报 `[FAIL]`(例如 exe 正在运行导致 `dist\` 被占用)。
