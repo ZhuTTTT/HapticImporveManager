@@ -12,6 +12,15 @@ from PySide6.QtCore import QObject, QProcess, QProcessEnvironment, Signal
 from . import ifeo, paths
 
 
+def _python_exe() -> str:
+    """冻结态(PyInstaller exe)下 sys.executable 是 GUI 自身, 不能跑 .py,
+    改用系统 Python; 找不到则返回 sys.executable 兜底(子进程会报错并在日志可见)。"""
+    if getattr(sys, "frozen", False):
+        import shutil
+        return shutil.which("pythonw") or shutil.which("python") or sys.executable
+    return sys.executable
+
+
 class ProcessRunner(QObject):
     line = Signal(str)
     done = Signal(int)
@@ -44,11 +53,11 @@ class ProcessRunner(QObject):
 
 
 def launch_game(runner: ProcessRunner, name: str) -> None:
-    runner.start([sys.executable, paths.LAUNCHER_PY, name])
+    runner.start([_python_exe(), paths.LAUNCHER_PY, name])
 
 
 def set_ifeo(runner: ProcessRunner, name: str, on: bool) -> None:
-    runner.start(ifeo.build_ifeo_args(name, "on" if on else "off"))
+    runner.start(ifeo.build_ifeo_args(name, "on" if on else "off", _python_exe()))
 
 
 def is_game_running(exe_name: str) -> bool:
