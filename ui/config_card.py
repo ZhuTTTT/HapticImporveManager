@@ -1,19 +1,22 @@
 """注入配置卡: 模式四选一卡片 + 白话解释 + 缓冲实时毫秒换算 + 脏状态。
 
 文案集中在 config_model.MODE_INFO; 本文件只做呈现与交互。
+
+保存走后台线程(_SaveWorker): tasklist 查进程 + 杀软扫描磁盘写入
+在真实机器上可耗时数秒, 同步执行会冻结 UI。
 """
 from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtWidgets import (QFormLayout, QGridLayout, QHBoxLayout,
                                QVBoxLayout, QWidget)
 from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, ComboBox,
                             InfoBar, InfoBarPosition, MessageBox,
                             PlainTextEdit, PrimaryPushButton, PushButton,
-                            Slider, SpinBox, StrongBodyLabel, SwitchButton,
-                            themeColor)
+                            Slider, SpinBox, StateToolTip, StrongBodyLabel,
+                            SwitchButton, themeColor)
 
 from backend import config, launcher
 from backend.registry import GameEntry
@@ -48,6 +51,36 @@ class _ModeCard(CardWidget):
             f"_ModeCard {{ border: 2px solid {c}; }}" if on else "")
 
 
+class _SaveWorker(QObject):
+    """后台线程: 应用表单 → 校验 → 落盘 → tasklist 查游戏进程。
+
+    完成后发 finished(problems, game_running, name)。
+    注意: worker 持有 doc 期间 UI 线程不得再读写该 doc
+    (保存中 _save 有 _saving 重入守卫, 表单控件只读值不改 doc)。
+    """
+    finished = Signal(list, bool, str)
+
+    def __init__(self, doc, state: FormState, game_dir: str,
+                 exe_name: str, name: str):
+        super().__init__()
+        self._doc = doc
+        self._state = state
+        self._game_dir = game_dir
+        self._exe_name = exe_name
+        self._name = name
+
+    def run(self):
+        apply_form(self._doc, self._state)
+        # backend validate 硬性要求 log_level=Error, 作为兜底防手改配置;
+        # UI 层用户选 Info 时已在警告对话框知情确认, 故过滤该条目放行。
+        problems = [p for p in config.validate(self._doc)
+                    if "log_level" not in p]
+        if not problems:
+            config.save_config(self._game_dir, self._doc)
+        running = launcher.is_game_running(self._exe_name)
+        self.finished.emit(problems, running, self._name)
+
+
 class ConfigCard(CardWidget):
     saved = Signal(str)
 
@@ -57,6 +90,10 @@ class ConfigCard(CardWidget):
         self.doc = None
         self._dirty = False
         self._loading = False
+        self._saving = False
+        self._save_tip: StateToolTip | None = None
+        self._save_thread: QThread | None = None
+        self._save_worker: _SaveWorker | None = None
 
         lay = QVBoxLayout(self)
         lay.addWidget(StrongBodyLabel("注入配置", self))
@@ -290,28 +327,55 @@ class ConfigCard(CardWidget):
         return "Normal"
 
     def _save(self):
-        if self.doc is None or self.entry is None:
+        if self.doc is None or self.entry is None or self._saving:
             return
+        self._saving = True
+        self.btn_save.setEnabled(False)
+        self._save_tip = StateToolTip("保存中", "正在写入配置…", self)
+        self._save_tip.show()
+
         state = self._current_state()
-        apply_form(self.doc, state)
-        problems = config.validate(self.doc)
-        # backend validate 硬性要求 log_level=Error, 作为兜底防手改配置;
-        # UI 层用户选 Info 时已在警告对话框知情确认, 故过滤该条目放行。
-        problems = [p for p in problems if "log_level" not in p]
+        worker = _SaveWorker(self.doc, state, self.entry.game_dir,
+                             os.path.basename(self.entry.exe),
+                             self.entry.name)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(self._on_save_finished)
+        # PySide6 信号连接不持有接收者强引用, 局部变量被 GC 后槽函数静默失效,
+        # 必须存实例属性(_on_save_finished 里释放)
+        self._save_worker = worker
+        self._save_thread = thread
+        thread.start()
+
+    def _on_save_finished(self, problems: list, running: bool, name: str):
+        self._save_thread.wait()
+        self._save_thread = None
+        self._save_worker = None  # 释放引用, deleteLater 回收 C++ 侧
+        self._saving = False
+        if self._save_tip is not None:
+            self._save_tip.setContent("保存完成" if not problems
+                                      else "校验失败")
+            self._save_tip.setState(True)  # 打勾并自动淡出
+            self._save_tip = None
+
         if problems:
+            self.btn_save.setEnabled(True)  # 仍然脏, 允许改了再存
             InfoBar.warning("校验失败", "\n".join(problems),
                             parent=self, position=InfoBarPosition.TOP,
                             duration=6000)
             return
-        config.save_config(self.entry.game_dir, self.doc)
         self._dirty = False
-        self.btn_save.setEnabled(False)
         msg = "配置已保存"
-        if launcher.is_game_running(os.path.basename(self.entry.exe)):
+        if running:
             msg += "; 游戏正在运行, 重启后生效"
         InfoBar.success("保存", msg, parent=self,
                         position=InfoBarPosition.TOP, duration=3000)
-        self.saved.emit(self.entry.name)
+        # 保存期间用户可能已切换游戏, 仅当仍是同一游戏时才发 saved
+        if self.entry is not None and self.entry.name == name:
+            self.saved.emit(name)
 
     def _reset_default(self):
         box = MessageBox("恢复默认", "用默认配置覆盖当前表单?(未保存前不影响文件)",

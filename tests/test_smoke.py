@@ -84,7 +84,10 @@ def test_config_card_dirty_flow(qapp, tmp_path):
     assert card.is_dirty()
     assert card.btn_save.isEnabled()
 
+    from PySide6.QtTest import QSignalSpy
+    spy = QSignalSpy(card.saved)  # 保存已异步化, 等待完成信号
     card.btn_save.click()
+    assert spy.wait(5000)
     assert not card.is_dirty()
     assert load_config(str(d))["playback"]["target_buffer_len"]["48000"] == 512
     card.deleteLater()
@@ -189,7 +192,10 @@ def test_config_card_save_info_log_level(qapp, tmp_path, monkeypatch):
     card.set_game(entry)
     card.log_box.setCurrentText("Info")  # 触发警告(替身自动确认)
     assert card.is_dirty()
+    from PySide6.QtTest import QSignalSpy
+    spy = QSignalSpy(card.saved)  # 保存异步, 等完成信号
     card.btn_save.click()
+    assert spy.wait(5000)
     assert not card.is_dirty()  # 校验不再因 log_level 拒存
     assert load_config(str(tmp_path / "g"))["log_level"] == "Info"
     card.deleteLater()
@@ -258,4 +264,28 @@ def test_config_card_buffer_visibility_follows_mode(qapp, tmp_path):
     card._on_mode_card("Bypass")                  # 不干预 → 两者都藏
     assert card.buf_normal_label.isHidden()
     assert card.buf_ring_label.isHidden()
+    card.deleteLater()
+
+
+def test_config_card_save_does_not_block_ui(qapp, tmp_path, monkeypatch):
+    """保存异步化: tasklist/磁盘慢也不冻结 UI; 保存中出现 StateToolTip。"""
+    import time
+    from backend import launcher
+    monkeypatch.setattr(launcher, "is_game_running",
+                        lambda _name: time.sleep(1) or False)  # 模拟慢查询
+    from ui.config_card import ConfigCard
+    entry = _make_game(tmp_path, "g")
+    card = ConfigCard()
+    card.set_game(entry)
+    card.buf_normal.setValue(513)
+
+    from PySide6.QtTest import QSignalSpy
+    spy = QSignalSpy(card.saved)
+    t = time.perf_counter()
+    card.btn_save.click()
+    elapsed = time.perf_counter() - t
+    assert elapsed < 0.9          # UI 线程立即返回, 不等 tasklist
+    assert card._save_tip is not None  # loading 指示出现
+    assert spy.wait(5000)         # 后台完成后发 saved
+    assert not card.is_dirty()
     card.deleteLater()
