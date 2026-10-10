@@ -90,17 +90,32 @@ class ConfigCard(CardWidget):
         self.buf_normal.setRange(1, 65536)
         self.buf_normal_ms = CaptionLabel("", self)
         self.buf_normal.valueChanged.connect(self._on_buf_normal)
-        bn_row = QHBoxLayout()
+        bn_host = QWidget(self)
+        bn_row = QHBoxLayout(bn_host)
+        bn_row.setContentsMargins(0, 0, 0, 0)
         bn_row.addWidget(self.buf_normal, 1)
         bn_row.addWidget(self.buf_normal_ms)
+        self.buf_normal_label = BodyLabel("缓冲大小", self)
+        self.buf_normal_hint = CaptionLabel(
+            "普通模式用: 游戏能囤多少音频。小了破音, 大了拖延迟。", self)
+        # 同一组的三个件随模式一起显示/隐藏
+        self._buf_normal_widgets = (self.buf_normal_label, bn_host,
+                                    self.buf_normal_hint)
 
         self.buf_ring = SpinBox(self)
         self.buf_ring.setRange(1, 65536)
         self.buf_ring_ms = CaptionLabel("", self)
         self.buf_ring.valueChanged.connect(self._on_buf_ring)
-        br_row = QHBoxLayout()
+        br_host = QWidget(self)
+        br_row = QHBoxLayout(br_host)
+        br_row.setContentsMargins(0, 0, 0, 0)
         br_row.addWidget(self.buf_ring, 1)
         br_row.addWidget(self.buf_ring_ms)
+        self.buf_ring_label = BodyLabel("虚拟缓冲", self)
+        self.buf_ring_hint = CaptionLabel(
+            "虚拟缓冲模式用: 幕后接住游戏爆发写入的通道长度。", self)
+        self._buf_ring_widgets = (self.buf_ring_label, br_host,
+                                  self.buf_ring_hint)
 
         self.raw_switch = SwitchButton(self)
         self.raw_switch.setOnText("开")
@@ -120,12 +135,10 @@ class ConfigCard(CardWidget):
         form.addRow("", CaptionLabel(
             "手柄多久收到一次音频。越小越跟手, 太小会破音; 最左 = 不干预(原生)。",
             self))
-        form.addRow("缓冲大小", bn_row)
-        form.addRow("", CaptionLabel(
-            "普通模式用: 游戏能囤多少音频。小了破音, 大了拖延迟。", self))
-        form.addRow("虚拟缓冲", br_row)
-        form.addRow("", CaptionLabel(
-            "虚拟缓冲模式用: 幕后接住游戏爆发写入的通道长度。", self))
+        form.addRow(self.buf_normal_label, bn_host)
+        form.addRow("", self.buf_normal_hint)
+        form.addRow(self.buf_ring_label, br_host)
+        form.addRow("", self.buf_ring_hint)
         form.addRow("原始模式(raw)", self.raw_switch)
         form.addRow("", CaptionLabel("保持默认(开)即可, 出问题再动。", self))
         form.addRow("强制周期", self.force_switch)
@@ -210,8 +223,11 @@ class ConfigCard(CardWidget):
             c.set_selected(m == mode)
         info = MODE_INFO.get(mode)
         self.mode_detail.setText(info["detail"] if info else "")
-        self.buf_normal.setEnabled(mode == "Normal")
-        self.buf_ring.setEnabled(mode == "Ringbuf")
+        # 缓冲项与模式联动: 不适用当前模式的整组隐藏(标签+输入+说明)
+        for w in self._buf_normal_widgets:
+            w.setVisible(mode == "Normal")
+        for w in self._buf_ring_widgets:
+            w.setVisible(mode == "Ringbuf")
 
     def _on_mode_card(self, mode: str):
         self._select_mode(mode)

@@ -239,3 +239,23 @@ def test_settings_page_change_dir_emit_on_no_sync(qapp, tmp_path, monkeypatch):
     assert cfg.log_dir.value == new_dir
     assert seen == [new_dir]  # 修复前: 此分支不发信号, 诊断页 watcher 停在旧路径
     page.deleteLater()
+
+
+def test_config_card_buffer_visibility_follows_mode(qapp, tmp_path):
+    """缓冲项与模式联动: 不适用当前模式的整组(标签+输入+说明)直接隐藏。"""
+    from ui.config_card import ConfigCard
+    entry = _make_game(tmp_path, "g")  # 默认配置 mode=Normal
+    card = ConfigCard()
+    card.set_game(entry)
+
+    assert not card.buf_normal_label.isHidden()   # Normal → 显示缓冲大小
+    assert card.buf_ring_label.isHidden()         #        隐藏虚拟缓冲
+
+    card._on_mode_card("Ringbuf")
+    assert card.buf_normal_label.isHidden()
+    assert not card.buf_ring_label.isHidden()
+
+    card._on_mode_card("Bypass")                  # 不干预 → 两者都藏
+    assert card.buf_normal_label.isHidden()
+    assert card.buf_ring_label.isHidden()
+    card.deleteLater()
