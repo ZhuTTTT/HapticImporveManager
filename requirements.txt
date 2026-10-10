@@ -4,3 +4,4 @@ PyYAML>=6.0
 pefile>=2023.2.7
 tomlkit>=0.12
 pytest>=8.0
+pyinstaller>=6.0

@@ -25,3 +25,14 @@ GUI 设置(主题/日志目录)存 %APPDATA%/HapticImproveManager/gui_config.jso
 
 ## 测试
     python -m pytest tests/ -v
+
+## 打包 exe
+    packaging\build_exe.bat
+
+产出 `dist\HapticImproveManager\`, 双击其中 `HapticImproveManager.exe` 即可运行
+(onedir 模式, 整目录拷走才可用, 勿只拷 exe)。
+
+注意: 冻结态下「启动游戏 / IFEO 开关」依赖系统装有 Python 且 PATH 可见
+(backend 会优先找 pythonw, 再找 python)——injector 链仍在外部 specialk 项目,
+exe 只打包 GUI 自身。系统找不到 Python 时仍可浏览配置, 仅启动/IFEO 子进程失败
+(日志可见报错)。
