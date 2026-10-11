@@ -11,7 +11,9 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, FluentIcon, IconWidget,
                             StrongBodyLabel)
 
 from backend import ifeo, launcher, paths, registry
+from backend.config import MODES
 from backend.ifeo import IfeoState
+from i18n import tr
 from ui import theme
 from ui.game_detail import GameDetailPage
 
@@ -36,8 +38,12 @@ class _GameItemWidget(QWidget):
         c = theme.status_color(level)
         dot.setStyleSheet(f"background: {c}; border-radius: 5px;")
         name = BodyLabel(entry.name, self)
-        hint = CaptionLabel(f"{entry.mode_hint} · {entry.buffer_hint} 帧",
-                            self)
+        # mode_hint 是注册表中的模式键(Normal/…), 显示时译为模式卡标题;
+        # 意外值(手改 yaml)原样显示而不露出消息键
+        mode_titles = {m: tr(f"mode.{m}.title") for m in MODES}
+        hint = CaptionLabel(
+            f"{mode_titles.get(entry.mode_hint, entry.mode_hint)} · "
+            f"{tr('unit.frames', n=entry.buffer_hint)}", self)
         text_col = QVBoxLayout()
         text_col.setContentsMargins(0, 0, 0, 0)
         text_col.setSpacing(0)
@@ -60,9 +66,9 @@ class GamesPage(QWidget):
         self.runner.line.connect(self.log_line)
 
         self.search = SearchLineEdit(self)
-        self.search.setPlaceholderText("搜索游戏…")
+        self.search.setPlaceholderText(tr("games.search_placeholder"))
         self.search.textChanged.connect(self._filter)
-        self.btn_add = PrimaryPushButton(FluentIcon.ADD, "添加游戏", self)
+        self.btn_add = PrimaryPushButton(FluentIcon.ADD, tr("games.add"), self)
         self.btn_add.clicked.connect(self._add_game)
         self.game_list = ListWidget(self)
         self.game_list.currentRowChanged.connect(self._on_select)
@@ -85,9 +91,9 @@ class GamesPage(QWidget):
         icon.setFixedSize(64, 64)
         el.addWidget(icon, 0, Qt.AlignmentFlag.AlignCenter)
         el.addSpacing(12)
-        t = StrongBodyLabel("还没有游戏", empty)
+        t = StrongBodyLabel(tr("games.empty_title"), empty)
         t.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        c = CaptionLabel("点击左下角「添加游戏」, 四步完成接入", empty)
+        c = CaptionLabel(tr("games.empty_caption"), empty)
         c.setAlignment(Qt.AlignmentFlag.AlignCenter)
         el.addWidget(t)
         el.addWidget(c)

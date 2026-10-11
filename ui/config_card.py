@@ -1,6 +1,6 @@
 """注入配置卡: 模式四选一卡片 + 白话解释 + 缓冲实时毫秒换算 + 脏状态。
 
-文案集中在 config_model.MODE_INFO; 本文件只做呈现与交互。
+模式文案集中在 i18n 目录(mode.<Mode>.* 键); 本文件只做呈现与交互。
 
 保存走后台线程(_SaveWorker): tasklist 查进程 + 杀软扫描磁盘写入
 在真实机器上可耗时数秒, 同步执行会冻结 UI。
@@ -20,9 +20,10 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, ComboBox,
 
 from backend import config, launcher
 from backend.registry import GameEntry
+from i18n import tr
 from ui import theme
 from ui.app_config import APP_CFG
-from ui.config_model import (MODE_INFO, FormState, apply_form, frames_to_ms,
+from ui.config_model import (FormState, apply_form, frames_to_ms,
                              hus_to_ms, load_form)
 
 _MODE_ICONS = {  # 模式卡的语义图标
@@ -41,17 +42,16 @@ class _ModeCard(CardWidget):
         super().__init__(parent)
         self.mode = mode
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        info = MODE_INFO[mode]
         icon = IconWidget(_MODE_ICONS[mode], self)
         icon.setFixedSize(20, 20)
         head = QHBoxLayout()
         head.setContentsMargins(0, 0, 0, 0)
         head.addWidget(icon)
-        head.addWidget(StrongBodyLabel(info["title"], self))
+        head.addWidget(StrongBodyLabel(tr(f"mode.{mode}.title"), self))
         head.addStretch(1)
         lay = QVBoxLayout(self)
         lay.addLayout(head)
-        brief = CaptionLabel(info["brief"], self)
+        brief = CaptionLabel(tr(f"mode.{mode}.brief"), self)
         brief.setWordWrap(True)
         lay.addWidget(brief)
 
@@ -115,9 +115,8 @@ class ConfigCard(CardWidget):
         self._save_worker: _SaveWorker | None = None
 
         lay = QVBoxLayout(self)
-        lay.addWidget(StrongBodyLabel("注入配置", self))
-        lay.addWidget(CaptionLabel(
-            "修改后点「保存」生效; 游戏运行中保存需重启游戏。", self))
+        lay.addWidget(StrongBodyLabel(tr("config.title"), self))
+        lay.addWidget(CaptionLabel(tr("config.caption"), self))
 
         # 模式四卡
         self.mode_cards: dict[str, _ModeCard] = {}
@@ -153,9 +152,8 @@ class ConfigCard(CardWidget):
         bn_row.setContentsMargins(0, 0, 0, 0)
         bn_row.addWidget(self.buf_normal, 1)
         bn_row.addWidget(self.buf_normal_ms)
-        self.buf_normal_label = BodyLabel("缓冲大小", self)
-        self.buf_normal_hint = CaptionLabel(
-            "普通模式用: 游戏能囤多少音频。小了破音, 大了拖延迟。", self)
+        self.buf_normal_label = BodyLabel(tr("config.buffer"), self)
+        self.buf_normal_hint = CaptionLabel(tr("config.buffer_hint"), self)
         # 同一组的三个件随模式一起显示/隐藏
         self._buf_normal_widgets = (self.buf_normal_label, bn_host,
                                     self.buf_normal_hint)
@@ -170,19 +168,18 @@ class ConfigCard(CardWidget):
         br_row.setContentsMargins(0, 0, 0, 0)
         br_row.addWidget(self.buf_ring, 1)
         br_row.addWidget(self.buf_ring_ms)
-        self.buf_ring_label = BodyLabel("虚拟缓冲", self)
-        self.buf_ring_hint = CaptionLabel(
-            "虚拟缓冲模式用: 幕后接住游戏爆发写入的通道长度。", self)
+        self.buf_ring_label = BodyLabel(tr("config.ring_buffer"), self)
+        self.buf_ring_hint = CaptionLabel(tr("config.ring_buffer_hint"), self)
         self._buf_ring_widgets = (self.buf_ring_label, br_host,
                                   self.buf_ring_hint)
 
         self.raw_switch = SwitchButton(self)
-        self.raw_switch.setOnText("开")
-        self.raw_switch.setOffText("关")
+        self.raw_switch.setOnText(tr("common.on"))
+        self.raw_switch.setOffText(tr("common.off"))
         self.raw_switch.checkedChanged.connect(self._mark_dirty)
         self.force_switch = SwitchButton(self)
-        self.force_switch.setOnText("开")
-        self.force_switch.setOffText("关")
+        self.force_switch.setOnText(tr("common.on"))
+        self.force_switch.setOffText(tr("common.off"))
         self.force_switch.checkedChanged.connect(self._mark_dirty)
 
         self.log_box = ComboBox(self)
@@ -190,27 +187,24 @@ class ConfigCard(CardWidget):
         self.log_box.currentTextChanged.connect(self._on_log_level)
 
         form = QFormLayout()
-        form.addRow("推送节奏", period_row)
-        form.addRow("", CaptionLabel(
-            "手柄多久收到一次音频。越小越跟手, 太小会破音; 最左 = 不干预(原生)。",
-            self))
+        form.addRow(tr("config.period"), period_row)
+        form.addRow("", CaptionLabel(tr("config.period_hint"), self))
         form.addRow(self.buf_normal_label, bn_host)
         form.addRow("", self.buf_normal_hint)
         form.addRow(self.buf_ring_label, br_host)
         form.addRow("", self.buf_ring_hint)
-        form.addRow("原始模式(raw)", self.raw_switch)
-        form.addRow("", CaptionLabel("保持默认(开)即可, 出问题再动。", self))
-        form.addRow("强制周期", self.force_switch)
-        form.addRow("", CaptionLabel("强制按推送节奏发送。保持默认(开)即可。",
-                                     self))
-        form.addRow("日志级别", self.log_box)
+        form.addRow(tr("config.raw"), self.raw_switch)
+        form.addRow("", CaptionLabel(tr("config.raw_hint"), self))
+        form.addRow(tr("config.force_period"), self.force_switch)
+        form.addRow("", CaptionLabel(tr("config.force_period_hint"), self))
+        form.addRow(tr("config.log_level"), self.log_box)
         lay.addLayout(form)
 
         # 按钮
-        self.btn_save = PrimaryPushButton("保存", self)
+        self.btn_save = PrimaryPushButton(tr("config.save"), self)
         self.btn_save.setEnabled(False)
         self.btn_save.clicked.connect(self._save)
-        self.btn_default = PushButton("恢复默认", self)
+        self.btn_default = PushButton(tr("config.reset"), self)
         self.btn_default.clicked.connect(self._reset_default)
         btns = QHBoxLayout()
         btns.addWidget(self.btn_save)
@@ -232,9 +226,8 @@ class ConfigCard(CardWidget):
             self.doc = config.load_config(entry.game_dir)
         except FileNotFoundError:
             self.doc = None
-            box = MessageBox("无配置",
-                             f"{entry.name} 还没有 redirect_config.toml,\n"
-                             "生成默认配置?", self)
+            box = MessageBox(tr("config.missing_title"),
+                             tr("config.missing_msg", name=entry.name), self)
             if box.exec():
                 self.doc = config.default_config(APP_CFG.log_dir.value)
                 config.save_config(entry.game_dir, self.doc)
@@ -246,8 +239,8 @@ class ConfigCard(CardWidget):
             self._set_form_enabled(False)
             self.error_view.show()
             with open(entry.config_path, encoding="utf-8") as f:
-                self.error_view.setPlainText(f"配置解析失败: {e}\n\n"
-                                             + f.read())
+                self.error_view.setPlainText(
+                    tr("config.parse_failed", err=e) + "\n\n" + f.read())
             return
         self._set_form_enabled(True)
         self._fill(load_form(self.doc))
@@ -265,7 +258,8 @@ class ConfigCard(CardWidget):
         self._select_mode(st.mode)
         self.period_slider.setValue(st.period_hus)
         self.period_label.setText(
-            "原生" if st.period_hus == 0 else f"{hus_to_ms(st.period_hus):.1f} ms")
+            tr("config.period_native") if st.period_hus == 0
+            else f"{hus_to_ms(st.period_hus):.1f} ms")
         self.buf_normal.setValue(st.buf_normal)
         self.buf_ring.setValue(st.buf_ring)
         self.raw_switch.setChecked(st.raw)
@@ -280,8 +274,9 @@ class ConfigCard(CardWidget):
     def _select_mode(self, mode: str):
         for m, c in self.mode_cards.items():
             c.set_selected(m == mode)
-        info = MODE_INFO.get(mode)
-        self.mode_detail.setText(info["detail"] if info else "")
+        # 意外模式值(手改 toml)无文案, 详情区留空而不露出消息键
+        self.mode_detail.setText(
+            tr(f"mode.{mode}.detail") if mode in config.MODES else "")
         # 缓冲项与模式联动: 不适用当前模式的整组隐藏(标签+输入+说明)
         for w in self._buf_normal_widgets:
             w.setVisible(mode == "Normal")
@@ -294,7 +289,7 @@ class ConfigCard(CardWidget):
 
     def _on_period(self, v: int):
         self.period_label.setText(
-            "原生" if v == 0 else f"{hus_to_ms(v):.1f} ms")
+            tr("config.period_native") if v == 0 else f"{hus_to_ms(v):.1f} ms")
         self._mark_dirty()
 
     def _on_buf_normal(self, v: int):
@@ -309,10 +304,8 @@ class ConfigCard(CardWidget):
         if self._loading:
             return
         if level != "Error":
-            box = MessageBox(
-                "日志级别",
-                "Info 在 overflow 时可写 GB 级日志(实测一次会话 2.9GB)。\n"
-                "仅排障临时使用, 确定切换?", self)
+            box = MessageBox(tr("config.log_level"),
+                             tr("config.log_info_warn"), self)
             if not box.exec():
                 self._loading = True
                 self.log_box.setCurrentText("Error")
@@ -353,7 +346,8 @@ class ConfigCard(CardWidget):
             return
         self._saving = True
         self.btn_save.setEnabled(False)
-        self._save_tip = StateToolTip("保存中", "正在写入配置…", self)
+        self._save_tip = StateToolTip(tr("config.saving_title"),
+                                      tr("config.saving_msg"), self)
         self._save_tip.show()
 
         state = self._current_state()
@@ -378,30 +372,29 @@ class ConfigCard(CardWidget):
         self._save_worker = None  # 释放引用, deleteLater 回收 C++ 侧
         self._saving = False
         if self._save_tip is not None:
-            self._save_tip.setContent("保存完成" if not problems
-                                      else "校验失败")
+            self._save_tip.setContent(tr("config.saved_title") if not problems
+                                      else tr("config.invalid_title"))
             self._save_tip.setState(True)  # 打勾并自动淡出
             self._save_tip = None
 
         if problems:
             self.btn_save.setEnabled(True)  # 仍然脏, 允许改了再存
-            InfoBar.warning("校验失败", "\n".join(problems),
+            InfoBar.warning(tr("config.invalid_title"), "\n".join(problems),
                             parent=self, position=InfoBarPosition.TOP,
                             duration=6000)
             return
         self._dirty = False
-        msg = "配置已保存"
+        msg = tr("config.saved_msg")
         if running:
-            msg += "; 游戏正在运行, 重启后生效"
-        InfoBar.success("保存", msg, parent=self,
+            msg += tr("config.saved_running_suffix")
+        InfoBar.success(tr("config.save"), msg, parent=self,
                         position=InfoBarPosition.TOP, duration=3000)
         # 保存期间用户可能已切换游戏, 仅当仍是同一游戏时才发 saved
         if self.entry is not None and self.entry.name == name:
             self.saved.emit(name)
 
     def _reset_default(self):
-        box = MessageBox("恢复默认", "用默认配置覆盖当前表单?(未保存前不影响文件)",
-                         self)
+        box = MessageBox(tr("config.reset"), tr("config.reset_msg"), self)
         if box.exec():
             self.doc = config.default_config(APP_CFG.log_dir.value)
             self.error_view.hide()

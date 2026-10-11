@@ -15,6 +15,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, Pivot,
                             TitleLabel)
 
 from backend import monitor, paths
+from i18n import tr
 from ui import theme
 from ui.app_config import APP_CFG
 
@@ -29,7 +30,7 @@ class DiagnosticsPage(QWidget):
         # 最近注入
         self.result_card = CardWidget(self)
         rc = QVBoxLayout(self.result_card)
-        rc.addWidget(StrongBodyLabel("最近注入", self.result_card))
+        rc.addWidget(StrongBodyLabel(tr("diag.recent"), self.result_card))
         self.result_label = BodyLabel("", self.result_card)
         self.result_label.setWordWrap(True)
         self.result_label.setFont(theme.mono_font())
@@ -44,8 +45,7 @@ class DiagnosticsPage(QWidget):
             vl = QVBoxLayout(host)
             vl.setContentsMargins(0, 0, 0, 0)
             if fixed:
-                vl.addWidget(CaptionLabel(
-                    "此日志由注入器写入, 位置固定于 specialk 目录", host))
+                vl.addWidget(CaptionLabel(tr("diag.fixed_log_note"), host))
             view = PlainTextEdit(host)
             view.setReadOnly(True)
             view.setMaximumBlockCount(500)
@@ -61,13 +61,13 @@ class DiagnosticsPage(QWidget):
             )
         self.tabs.setCurrentItem("injector_debug")
 
-        self.btn_open = PushButton("在资源管理器中打开", self)
+        self.btn_open = PushButton(tr("settings.log_dir_open"), self)
         self.btn_open.clicked.connect(self._open_current)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(24, 16, 24, 16)
         lay.setSpacing(10)
-        lay.addWidget(TitleLabel("诊断", self))
+        lay.addWidget(TitleLabel(tr("nav.diagnostics"), self))
         lay.addWidget(self.result_card)
         lay.addWidget(self.tabs)
         lay.addWidget(self.btn_open)
@@ -121,7 +121,7 @@ class DiagnosticsPage(QWidget):
         mtime, text = monitor.read_result(str(paths.INJECTOR_RESULT))
         self.result_label.setText(
             f"{mtime:%Y-%m-%d %H:%M:%S} — {text}" if mtime and text
-            else "暂无注入记录")
+            else tr("diag.no_records"))
 
     def _reload(self, key: str):
         view = self.log_views[key]

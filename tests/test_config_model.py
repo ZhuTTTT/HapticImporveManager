@@ -1,7 +1,8 @@
 import tomlkit
 
-from backend.config import default_config, validate
-from ui.config_model import (FormState, MODE_INFO, apply_form, frames_to_ms,
+import i18n
+from backend.config import MODES, default_config, validate
+from ui.config_model import (FormState, apply_form, frames_to_ms,
                              hus_to_ms, load_form)
 
 
@@ -55,8 +56,8 @@ def test_conversions():
 
 
 def test_mode_info_covers_all_modes():
-    from backend.config import MODES
+    """模式文案已迁入 i18n 目录: 每模式 title/brief/detail 中英均非空。"""
     for m in MODES:
-        assert MODE_INFO[m]["title"]
-        assert MODE_INFO[m]["brief"]
-        assert MODE_INFO[m]["detail"]
+        for field in ("title", "brief", "detail"):
+            entry = i18n._MESSAGES[f"mode.{m}.{field}"]
+            assert entry["zh"] and entry["en"]

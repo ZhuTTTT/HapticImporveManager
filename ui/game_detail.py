@@ -16,6 +16,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, FluentIcon,
 
 from backend import ifeo, launcher, paths, registry
 from backend.ifeo import IfeoState
+from i18n import tr
 from ui import theme
 from ui.config_card import ConfigCard
 
@@ -35,9 +36,11 @@ class GameDetailPage(QWidget):
         # 头部: 左侧游戏名+路径, 右侧操作按钮
         self.name_label = TitleLabel("", self)
         self.path_label = CaptionLabel("", self)
-        self.btn_launch = PrimaryPushButton(FluentIcon.PLAY, "启动游戏", self)
+        self.btn_launch = PrimaryPushButton(FluentIcon.PLAY,
+                                            tr("detail.launch"), self)
         self.btn_launch.clicked.connect(self._launch)
-        self.btn_remove = PushButton(FluentIcon.DELETE, "移除", self)
+        self.btn_remove = PushButton(FluentIcon.DELETE, tr("detail.remove"),
+                                     self)
         self.btn_remove.clicked.connect(self._remove)
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
@@ -53,26 +56,23 @@ class GameDetailPage(QWidget):
         sc = QVBoxLayout(self.status_card)
         self.status_badge = BodyLabel("", self)
         self.status_badge.setAutoFillBackground(False)
-        self.anticheat_label = CaptionLabel(
-            "⚠ 检测到反作弊特征, 注入有账号封禁风险", self)
+        self.anticheat_label = CaptionLabel(tr("detail.anticheat_warn"), self)
         self.ifeo_switch = SwitchButton(self)
-        self.ifeo_switch.setOnText("开")
-        self.ifeo_switch.setOffText("关")
+        self.ifeo_switch.setOnText(tr("common.on"))
+        self.ifeo_switch.setOffText(tr("common.off"))
         self.ifeo_switch.checkedChanged.connect(self._on_ifeo_toggled)
         ifeo_row = QHBoxLayout()
-        ifeo_row.addWidget(StrongBodyLabel("IFEO 自动注入", self))
+        ifeo_row.addWidget(StrongBodyLabel(tr("detail.ifeo_label"), self))
         ifeo_row.addStretch(1)
         ifeo_row.addWidget(self.ifeo_switch)
-        sc.addWidget(StrongBodyLabel("状态", self))
+        sc.addWidget(StrongBodyLabel(tr("detail.status"), self))
         badge_row = QHBoxLayout()  # 徽章是胶囊, 不拉伸
         badge_row.addWidget(self.status_badge, 0)
         badge_row.addStretch(1)
         sc.addLayout(badge_row)
         sc.addWidget(self.anticheat_label)
         sc.addLayout(ifeo_row)
-        sc.addWidget(CaptionLabel(
-            "开启后从 Steam/启动器正常启动游戏即自动注入(需 UAC 提权)。",
-            self))
+        sc.addWidget(CaptionLabel(tr("detail.ifeo_caption"), self))
 
         # 配置卡
         self.config_card = ConfigCard(self)
@@ -97,8 +97,8 @@ class GameDetailPage(QWidget):
     def set_game(self, entry: registry.GameEntry) -> bool:
         """切换游戏; 配置卡有未保存修改时先询问, 用户取消则返回 False。"""
         if self.config_card.is_dirty():
-            box = MessageBox("未保存修改",
-                             "当前配置有未保存修改, 放弃并切换?", self)
+            box = MessageBox(tr("detail.unsaved_title"),
+                             tr("detail.unsaved_msg"), self)
             if not box.exec():
                 return False
         self._ifeo_timer.stop()  # 换游戏时停掉旧轮询
@@ -117,13 +117,19 @@ class GameDetailPage(QWidget):
             return
         state = ifeo.query_ifeo(os.path.basename(e.exe))
         if not e.exe_exists:
-            level, text, tip = "err", "exe 丢失", "找不到游戏可执行文件, 请检查路径"
+            level = "err"
+            text = tr("detail.badge_exe_missing")
+            tip = tr("detail.badge_exe_missing_tip")
         elif e.config_exists and state == IfeoState.ON_OURS:
-            level, text, tip = "ok", "就绪", "配置与 IFEO 均已就位"
+            level = "ok"
+            text = tr("detail.badge_ready")
+            tip = tr("detail.badge_ready_tip")
         else:
-            level, text, tip = "warn", "未完成", "配置或 IFEO 未就位"
+            level = "warn"
+            text = tr("detail.badge_incomplete")
+            tip = tr("detail.badge_incomplete_tip")
         if state == IfeoState.ON_OTHER:
-            level, text = "err", text + "(IFEO 被其他调试器占用!)"
+            level, text = "err", text + tr("detail.badge_ifeo_occupied")
         self.status_badge.setText(text)
         self.status_badge.setToolTip(tip)
         self.status_badge.setStyleSheet(theme.pill_style(level))
@@ -152,7 +158,7 @@ class GameDetailPage(QWidget):
         if state == want or self._poll_count >= 10:
             self._ifeo_timer.stop()
             if state != want:
-                InfoBar.warning("IFEO", "提权被取消或操作失败, 状态未变更",
+                InfoBar.warning("IFEO", tr("detail.ifeo_failed_msg"),
                                 parent=self, position=InfoBarPosition.TOP,
                                 duration=4000)
             self.refresh_status()
@@ -164,9 +170,9 @@ class GameDetailPage(QWidget):
     def _remove(self):
         if self.entry is None:
             return
-        box = MessageBox("移除游戏",
-                         f"从列表移除 {self.entry.name}?\n"
-                         "(不动游戏文件和 IFEO 设置)", self)
+        box = MessageBox(tr("detail.remove_title"),
+                         tr("detail.remove_confirm", name=self.entry.name),
+                         self)
         if box.exec():
             self._ifeo_timer.stop()  # 移除即停轮询, entry 置 None 后不再触发
             registry.remove_game(self.entry.name, str(paths.GAMES_YAML))
