@@ -41,11 +41,15 @@ Download `HapticImproveManager.zip` from [Releases](../../releases), extract
 it, and double-click `HapticImproveManager.exe` (keep the whole folder
 together — copying just the exe won't work).
 
-> Note: the exe bundles only the GUI. "Launch game / IFEO toggle" requires
-> Python installed and visible on PATH (`pythonw` first, then `python`),
-> because the injection chain still lives in the external specialk project.
-> Without Python you can still browse and edit configs — only the launch/IFEO
-> subprocesses will fail.
+> Zero dependencies, ready to run: the injection chain ships frozen in the
+> package — `injector.exe`, `haptic_launcher.exe`, and
+> `zzz_inject/wasapi_relink.dll` under `chain/`. No Python or any external
+> dependency required.
+
+> **Upgrading from ≤v0.2.0**: toggle IFEO off and back on once for each game.
+> The old pythonw-based debugger value left in the registry no longer matches,
+> so the game status shows "IFEO is taken by another debugger" until you
+> re-toggle — that fixes it.
 
 ### Option 2: Run from source
 
@@ -63,8 +67,9 @@ WASAPI shared mode to the controller's audio endpoint (4 channels: ch1/2 =
 speakers, ch3/4 = haptic motors). The audio buffer the game requests
 (20–85ms) is the main source of haptic latency.
 
-The external injection chain managed by this tool (`injector.py` /
-`haptic_launcher.py` from the specialk project) injects the
+The injection chain bundled with this tool (`injector.exe` /
+`haptic_launcher.exe` under `chain/`, developed in the specialk project and
+frozen at build time) injects the
 [wasapi_relink](https://github.com/Litttlefish/wasapi_relink) DLL into the
 game process, shrinking the buffer at the WASAPI level and pacing the writes.
 This GUI handles game registration, config editing (`redirect_config.toml`),
@@ -76,6 +81,10 @@ Thin GUI (PySide6 + [PySide6-Fluent-Widgets](https://github.com/zhiyiYo/PySide6-
 + subprocess backend. The GUI runs unelevated; the launcher escalates via UAC
 on its own when toggling IFEO.
 
+- The injection chain ships frozen under `chain/`: `injector.exe` (launched by
+  IFEO, windowless), `haptic_launcher.exe` (GUI subprocess), and
+  `zzz_inject/wasapi_relink.dll`; `games.yaml` and injection logs are written
+  there at runtime
 - The game registry `games.yaml` is shared between the GUI and the CLI
 - `ui/config_model.py` is a pure-function form ↔ TOML mapping (unit-testable,
   comment-preserving)
@@ -95,6 +104,8 @@ python -m pytest tests/ -v
 packaging\build_exe.bat
 ```
 
-Output goes to `dist\HapticImproveManager\` (onedir mode). The script reports
-`[FAIL]` explicitly on build errors (e.g. `dist\` locked because the exe is
-still running).
+Output goes to `dist\HapticImproveManager\` (onedir mode, including the
+`chain\` injection chain). The chain source path is the `SPECIALK` constant at
+the top of the script (build-time only, not needed at runtime) — adjust it as
+needed. The script reports `[FAIL]` explicitly on build errors (e.g. `dist\`
+locked because the exe is still running).
