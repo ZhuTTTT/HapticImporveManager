@@ -20,9 +20,10 @@ if not exist "dist\HapticImproveManager\HapticImproveManager.exe" goto :fail
 rem ---- 注入链冻结:随包分发,彻底零外部依赖 ----
 set CHAIN_OUT=dist\HapticImproveManager\chain
 
-rem injector 无窗(IFEO 拉起不闪窗), launcher 保留 stdout(GUI 需捕获)
+rem 两个链 exe 均无窗: IFEO 拉起不闪窗; GUI QProcess 拉起也不弹控制台
+rem (launcher 的 stdout 诊断输出因此不可得, 诊断数据以 injector 的结果/日志文件为准)
 python -m PyInstaller --noconfirm --clean --onefile --windowed --collect-all winsdk --distpath %CHAIN_OUT% --name injector %SPECIALK%\injector.py || goto :fail
-python -m PyInstaller --noconfirm --clean --onefile --console --distpath %CHAIN_OUT% --name haptic_launcher %SPECIALK%\haptic_launcher.py || goto :fail
+python -m PyInstaller --noconfirm --clean --onefile --windowed --distpath %CHAIN_OUT% --name haptic_launcher %SPECIALK%\haptic_launcher.py || goto :fail
 mkdir %CHAIN_OUT%\zzz_inject 2>nul
 copy /Y %SPECIALK%\zzz_inject\wasapi_relink.dll %CHAIN_OUT%\zzz_inject\ || goto :fail
 
