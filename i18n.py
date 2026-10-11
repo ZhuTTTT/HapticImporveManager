@@ -14,6 +14,73 @@ common.* / unit.*。
 _MESSAGES: dict[str, dict[str, str]] = {
     "app.title":   {"zh": "Haptic 低延迟管理器", "en": "Haptic Low-Latency Manager"},
     "unit.frames": {"zh": "{n} 帧", "en": "{n} frames"},
+
+    # 主导航
+    "nav.games":       {"zh": "游戏", "en": "Games"},
+    "nav.diagnostics": {"zh": "诊断", "en": "Diagnostics"},
+    "nav.settings":    {"zh": "设置", "en": "Settings"},
+
+    # 设置页
+    "settings.title":       {"zh": "设置", "en": "Settings"},
+    "settings.language":    {"zh": "语言", "en": "Language"},
+    "settings.lang_system": {"zh": "跟随系统", "en": "Follow system"},
+    "settings.lang_restart_title": {
+        "zh": "语言已更改",
+        "en": "Language changed",
+    },
+    "settings.lang_restart_msg": {
+        "zh": "界面语言将在重启应用后生效。",
+        "en": "The interface language will take effect after restarting the app.",
+    },
+    "settings.theme":       {"zh": "主题", "en": "Theme"},
+    "settings.theme_light": {"zh": "浅色", "en": "Light"},
+    "settings.theme_dark":  {"zh": "深色", "en": "Dark"},
+    "settings.theme_auto":  {"zh": "跟随系统", "en": "Follow system"},
+    "settings.mica": {"zh": "云母背景(Win11)", "en": "Mica background (Win11)"},
+    "settings.log_dir": {"zh": "日志目录", "en": "Log directory"},
+    "settings.log_dir_caption": {
+        "zh": "wasapi_relink.log 的存放位置。更改后可同步到所有已注册游戏的配置。",
+        "en": "Where wasapi_relink.log is written. After changing it, you can "
+              "sync the new location to all registered games' configs.",
+    },
+    "settings.log_dir_change": {"zh": "更改…", "en": "Change…"},
+    "settings.log_dir_open": {
+        "zh": "在资源管理器中打开",
+        "en": "Open in Explorer",
+    },
+    "settings.log_dir_pick": {
+        "zh": "选择日志目录",
+        "en": "Choose log directory",
+    },
+    "settings.sync_title": {"zh": "同步日志目录", "en": "Sync log directory"},
+    "settings.sync_msg": {
+        "zh": "新目录: {d}\n\n是否同步更新所有已注册游戏({n} 个)的 "
+              "redirect_config.toml?\n选「否」则只影响以后新添加的游戏。",
+        "en": "New directory: {d}\n\nAlso update redirect_config.toml for all "
+              "{n} registered games?\nChoose \"Only future games\" to leave "
+              "existing games unchanged.",
+    },
+    "settings.sync_yes": {"zh": "同步所有游戏", "en": "Sync all games"},
+    "settings.sync_no":  {"zh": "仅以后生效", "en": "Only future games"},
+    "settings.sync_ok_title": {"zh": "已同步", "en": "Synced"},
+    "settings.sync_ok_msg": {
+        "zh": "已更新 {ok} 个游戏的配置",
+        "en": "Updated configs for {ok} games",
+    },
+    "settings.sync_partial_title": {
+        "zh": "部分同步失败",
+        "en": "Partial sync failed",
+    },
+    "settings.sync_partial_msg": {
+        "zh": "已同步 {ok} 个; 失败: {failed}"
+              "(配置缺失或损坏, 请到对应游戏详情修复)",
+        "en": "Synced {ok}; failed: {failed} "
+              "(config missing or corrupt — fix it from the game's detail page)",
+    },
+
+    # 通用开关
+    "common.on":  {"zh": "开", "en": "On"},
+    "common.off": {"zh": "关", "en": "Off"},
 }
 
 _LANG = "zh"  # 模块级默认值;仅启动时由 set_language 覆盖一次

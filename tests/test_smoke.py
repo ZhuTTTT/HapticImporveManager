@@ -5,6 +5,16 @@ import pytest
 from PySide6.QtWidgets import QApplication, QWidget
 
 
+@pytest.fixture(autouse=True)
+def _pin_zh():
+    """把 i18n 语言 pin 在 zh, 防止文案断言随测试机系统语言漂移。"""
+    import i18n
+    old = i18n.current_language()
+    i18n.set_language("zh")
+    yield
+    i18n.set_language(old)
+
+
 @pytest.fixture(scope="session")
 def qapp():
     app = QApplication.instance() or QApplication([])

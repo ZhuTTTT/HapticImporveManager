@@ -1,4 +1,4 @@
-"""GUI 自身设置(主题/Mica/日志目录)持久化。qconfig 存 json。"""
+"""GUI 自身设置(主题/Mica/语言/日志目录)持久化。qconfig 存 json。"""
 from __future__ import annotations
 
 import os
@@ -17,6 +17,9 @@ class AppConfig(QConfig):
     mica_enabled = ConfigItem(
         "MainWindow", "MicaEnabled", True, BoolValidator())
     log_dir = ConfigItem("Paths", "LogDir", paths.RELINK_LOG_DIR)
+    language = OptionsConfigItem(
+        "MainWindow", "Language", "System",
+        OptionsValidator(["System", "zh", "en"]))
 
 
 def _default_path() -> str:
