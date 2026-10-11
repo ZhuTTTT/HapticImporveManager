@@ -30,7 +30,7 @@ _MODE_ICONS = {  # 模式卡的语义图标
     "Normal": FluentIcon.SPEED_HIGH,     # 低延迟 = 速度
     "Ringbuf": FluentIcon.SYNC,          # 环形缓冲
     "Compat": FluentIcon.DEVELOPER_TOOLS,
-    "Bypass": FluentIcon.SKIP_FORWARD,   # 直通不干预
+    "Bypass": FluentIcon.SPEED_OFF,      # 处理关闭 = 不干预(与 Normal 同族呼应)
 }
 
 
