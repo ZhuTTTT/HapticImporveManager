@@ -1,5 +1,7 @@
 # HapticImproveManager
 
+中文 | [English](README_EN.md)
+
 DualSense 触觉(haptic)低延迟注入系统的可视化管理器 — 把 PC 游戏写给手柄的
 haptic 音频缓冲从原生 20–85ms 压到 ~10ms,用图形界面管理整个注入链路。
 
