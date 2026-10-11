@@ -21,6 +21,13 @@ def _python_exe() -> str:
     return sys.executable
 
 
+def _launcher_cmd() -> list[str]:
+    """haptic_launcher 子进程命令前缀: 冻结 → 随包 exe; 源码 → 解释器 + .py。"""
+    if getattr(sys, "frozen", False):
+        return [paths.LAUNCHER_EXE]
+    return [_python_exe(), paths.LAUNCHER_PY]
+
+
 class ProcessRunner(QObject):
     line = Signal(str)
     done = Signal(int)
@@ -53,11 +60,12 @@ class ProcessRunner(QObject):
 
 
 def launch_game(runner: ProcessRunner, name: str) -> None:
-    runner.start([_python_exe(), paths.LAUNCHER_PY, name])
+    runner.start(_launcher_cmd() + [name])
 
 
 def set_ifeo(runner: ProcessRunner, name: str, on: bool) -> None:
-    runner.start(ifeo.build_ifeo_args(name, "on" if on else "off", _python_exe()))
+    # 冻结/源码两态分支由 build_ifeo_args 内部处理, 与 _launcher_cmd 对齐
+    runner.start(ifeo.build_ifeo_args(name, "on" if on else "off"))
 
 
 def is_game_running(exe_name: str) -> bool:

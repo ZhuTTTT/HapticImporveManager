@@ -5,7 +5,7 @@ launcher 内 `import shutil` 在函数体内, 故 monkeypatch 目标是 shutil �
 """
 import sys
 
-from backend import launcher
+from backend import launcher, paths
 
 
 def test_python_exe_not_frozen():
@@ -32,3 +32,16 @@ def test_python_exe_frozen_no_system_python(monkeypatch):
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     monkeypatch.setattr("shutil.which", lambda name: None)
     assert launcher._python_exe() == sys.executable
+
+
+def test_launcher_cmd_not_frozen():
+    """源码态: 解释器 + haptic_launcher.py。"""
+    assert launcher._launcher_cmd() == [sys.executable, paths.LAUNCHER_PY]
+
+
+def test_launcher_cmd_frozen(monkeypatch):
+    """冻结态: 随包 haptic_launcher.exe 单元素前缀。"""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(paths, "LAUNCHER_EXE",
+                        r"C:\pkg\chain\haptic_launcher.exe")
+    assert launcher._launcher_cmd() == [r"C:\pkg\chain\haptic_launcher.exe"]

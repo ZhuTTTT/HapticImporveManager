@@ -103,8 +103,26 @@ def migrate_from_launcher(path: str = paths.GAMES_YAML,
     return games
 
 
+def migrate_legacy_chain_yaml(games_yaml_path: str, legacy_dir: str) -> bool:
+    """从旧链目录(源码/≤v0.2.0 的 specialk 目录)迁移 games.yaml。
+
+    目标不存在且 <legacy_dir>/games.yaml 存在 → 复制(保留原件)并返回 True;
+    其他情况不动作返回 False。绝不覆盖已存在的目标。"""
+    if os.path.exists(games_yaml_path):
+        return False
+    legacy = os.path.join(legacy_dir, "games.yaml")
+    if not os.path.isfile(legacy):
+        return False
+    shutil.copy2(legacy, games_yaml_path)
+    return True
+
+
 def load_or_migrate(path: str = paths.GAMES_YAML) -> dict[str, GameEntry]:
-    """优先读 games.yaml; 不存在或损坏时(备份 .bak 后)从 launcher 迁移。"""
+    """优先读 games.yaml; 不存在或损坏时(备份 .bak 后)从 launcher 迁移。
+    冻结态前置一步: 旧 specialk 目录的 games.yaml 复制迁移(真实用户机器上
+    旧目录不存在, 自然跳过; 仅开发机从源码/旧版切到冻结版时触发一次)。"""
+    if getattr(sys, "frozen", False):
+        migrate_legacy_chain_yaml(path, paths.DEV_SPECIALK_DIR)
     try:
         return load_games(path)
     except FileNotFoundError:

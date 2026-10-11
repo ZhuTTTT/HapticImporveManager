@@ -24,8 +24,10 @@ def query_ifeo(exe_name: str) -> IfeoState:
     return IfeoState.ON_OURS if paths.IFEO_VALUE in val else IfeoState.ON_OTHER
 
 
-def build_ifeo_args(name: str, action: str, python: str | None = None) -> list[str]:
+def build_ifeo_args(name: str, action: str) -> list[str]:
     """action: "on" | "off"。launcher 内部会自行 UAC 提权。
-    python=None 时用 sys.executable; 冻结态由调用方传入系统 Python。"""
+    冻结态直接调随包 haptic_launcher.exe; 源码态走 sys.executable + .py。"""
     assert action in ("on", "off")
-    return [python or sys.executable, paths.LAUNCHER_PY, "ifeo", name, action]
+    if getattr(sys, "frozen", False):
+        return [paths.LAUNCHER_EXE, "ifeo", name, action]
+    return [sys.executable, paths.LAUNCHER_PY, "ifeo", name, action]
