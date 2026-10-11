@@ -370,3 +370,31 @@ def test_game_detail_fills_available_width(qapp, tmp_path):
     container = page.layout().itemAt(0).widget()  # 填满后 container 是 HBox 唯一项
     assert container.width() > 1000  # 修复前: 被 760 上限居中
     page.deleteLater()
+
+
+def test_list_dot_updates_after_ifeo_toggle(qapp, tmp_path, monkeypatch):
+    """IFEO 轮询落定后左侧列表状态点同步变绿(修复前只刷新详情徽章)。"""
+    from backend import ifeo, launcher, paths, registry
+    from backend.ifeo import IfeoState
+    entry = _make_game(tmp_path, "g")
+    games_yaml = tmp_path / "games.yaml"
+    registry.save_games({"g": entry}, str(games_yaml))
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+    monkeypatch.setattr(launcher, "set_ifeo", lambda *a, **k: None)
+
+    from ui.games_page import GamesPage
+    page = GamesPage()
+    item = page.game_list.item(0)
+    old_widget = page.game_list.itemWidget(item)
+
+    monkeypatch.setattr(ifeo, "query_ifeo",
+                        lambda _name: IfeoState.ON_OURS)
+    page.detail.ifeo_switch.setChecked(True)  # 触发 _on_ifeo_toggled → 轮询
+    page.detail._poll_ifeo()                  # 立即落定(不等定时器)
+
+    from ui.games_page import _status_level
+    assert _status_level(entry) == "ok"
+    # refresh() 会 clear() 列表, 旧 item 已析构 — 重新取 item 比较部件身份
+    new_widget = page.game_list.itemWidget(page.game_list.item(0))
+    assert new_widget is not old_widget  # 列表已刷新重建, 状态点变绿
+    page.deleteLater()

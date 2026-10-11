@@ -101,6 +101,8 @@ class GamesPage(QWidget):
 
         self.detail = GameDetailPage(self.runner, self)
         self.detail.config_changed.connect(self._on_detail_changed)
+        # IFEO 开关落定后同步列表状态点(黄↔绿)
+        self.detail.ifeo_settled.connect(self._on_detail_changed)
 
         self.stack = QStackedWidget(self)
         self.stack.addWidget(empty)    # index 0

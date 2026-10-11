@@ -23,6 +23,7 @@ from ui.config_card import ConfigCard
 
 class GameDetailPage(QWidget):
     config_changed = Signal(str)
+    ifeo_settled = Signal(str)  # IFEO 轮询落定(开关状态已稳定), 列表需同步状态点
 
     def __init__(self, runner: launcher.ProcessRunner, parent=None):
         super().__init__(parent)
@@ -159,6 +160,8 @@ class GameDetailPage(QWidget):
                                 parent=self, position=InfoBarPosition.TOP,
                                 duration=4000)
             self.refresh_status()
+            # 轮询落定: 通知游戏中心刷新列表状态点(否则详情绿了列表仍黄)
+            self.ifeo_settled.emit(self.entry.name)
 
     def _launch(self):
         if self.entry is not None:
