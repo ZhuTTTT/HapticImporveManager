@@ -6,9 +6,11 @@ from PySide6.QtWidgets import QApplication, QWidget
 
 
 @pytest.fixture(autouse=True)
-def _pin_zh():
-    """把 i18n 语言 pin 在 zh, 防止文案断言随测试机系统语言漂移。"""
+def _pin_zh(monkeypatch):
+    """pin 住语言解析: MainWindow 构造时重新 resolve_language, 光 set_language
+    会被覆盖; 钉死解析函数后, 标题断言不随系统语言/用户 gui_config 漂移。"""
     import i18n
+    monkeypatch.setattr(i18n, "resolve_language", lambda *a: "zh")
     old = i18n.current_language()
     i18n.set_language("zh")
     yield
