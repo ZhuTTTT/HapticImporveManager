@@ -17,6 +17,8 @@ class MainWindow(FluentWindow):
     def __init__(self, cfg: AppConfig = APP_CFG):
         super().__init__()
         self.cfg = cfg
+        # 三页平级导航, 无下钻页面 — 返回按钮无语义, 隐藏
+        self.navigationInterface.setReturnButtonVisible(False)
         # 语言必须在构建任何页面之前解析好;
         # 放在这里而非 create_main_window: 测试也直接构造 MainWindow(cfg)
         i18n.set_language(i18n.resolve_language(cfg.language.value,

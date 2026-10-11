@@ -259,6 +259,38 @@ def test_settings_page_change_dir_emit_on_no_sync(qapp, tmp_path, monkeypatch):
     page.deleteLater()
 
 
+def test_settings_language_change_restart_flow(qapp, tmp_path, monkeypatch):
+    """语言切换: 弹重启确认框 — 确认则写盘并调 restart_app, 取消只写盘。"""
+    import ui.settings_page as sp
+    from ui.app_config import load_app_config
+    cfg = load_app_config(str(tmp_path / "gui.json"))
+    page = sp.SettingsPage(cfg)
+    calls = []
+    monkeypatch.setattr(sp, "restart_app", lambda: calls.append(1))
+    monkeypatch.setattr(sp, "MessageBox", _AcceptBox)  # 确认 → 立即重启
+    # ConfigItem 是类级共享描述符, "新"cfg 的初值其实是真实用户配置;
+    # 下拉只在索引变化时发信号 — 先归位到 0, 保证后续 setCurrentIndex 必触发
+    old_lang = cfg.language.value
+    monkeypatch.setattr(cfg, "save", lambda: None)  # 不写盘, 防污染真实配置
+    page.lang_box.setCurrentIndex(0)
+    calls.clear()
+
+    page.lang_box.setCurrentIndex(2)  # English
+    assert cfg.language.value == "en"
+    assert calls == [1]
+
+    class _DeclineBox(_AcceptBox):
+        def exec(self):
+            return False  # 稍后自行重启
+    monkeypatch.setattr(sp, "MessageBox", _DeclineBox)
+    page.lang_box.setCurrentIndex(1)  # 中文
+    assert cfg.language.value == "zh"
+    assert calls == [1]  # 取消不再触发重启
+
+    cfg.language.value = old_lang  # 恢复共享描述符, 不污染后续测试
+    page.deleteLater()
+
+
 def test_config_card_buffer_visibility_follows_mode(qapp, tmp_path):
     """缓冲项与模式联动: 不适用当前模式的整组(标签+输入+说明)直接隐藏。"""
     from ui.config_card import ConfigCard

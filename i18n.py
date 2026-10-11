@@ -29,9 +29,12 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "en": "Language changed",
     },
     "settings.lang_restart_msg": {
-        "zh": "界面语言将在重启应用后生效。",
-        "en": "The interface language will take effect after restarting the app.",
+        "zh": "界面语言将在重启应用后生效。现在重启吗?",
+        "en": "The interface language will take effect after restarting the "
+              "app. Restart now?",
     },
+    "settings.lang_restart_now":   {"zh": "立即重启", "en": "Restart now"},
+    "settings.lang_restart_later": {"zh": "稍后", "en": "Later"},
     "settings.theme":       {"zh": "主题", "en": "Theme"},
     "settings.theme_light": {"zh": "浅色", "en": "Light"},
     "settings.theme_dark":  {"zh": "深色", "en": "Dark"},

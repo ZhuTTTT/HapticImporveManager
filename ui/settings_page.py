@@ -15,6 +15,7 @@ from backend import paths, registry
 from i18n import tr
 from ui.app_config import AppConfig, apply_theme
 from ui.log_dir_sync import sync_log_dir
+from ui.restart import restart_app
 
 # 值为配置枚举, 非显示文案, 可留模块级; 显示标签必须在 __init__ 里 tr()
 _THEME_VALUES = ["Light", "Dark", "Auto"]
@@ -83,12 +84,15 @@ class SettingsPage(QWidget):
         lay.addStretch(1)
 
     def _on_language(self, idx: int):
-        # 只写盘、不碰运行中的 _LANG: 避免半中半英, 重启应用后生效
+        # 只写盘、不碰运行中的 _LANG: 避免半中半英; 弹框给用户「立即重启」选项
         self.cfg.language.value = _LANG_VALUES[idx]
         self.cfg.save()
-        InfoBar.info(tr("settings.lang_restart_title"),
-                     tr("settings.lang_restart_msg"),
-                     parent=self, position=InfoBarPosition.TOP, duration=4000)
+        box = MessageBox(tr("settings.lang_restart_title"),
+                         tr("settings.lang_restart_msg"), self)
+        box.yesButton.setText(tr("settings.lang_restart_now"))
+        box.cancelButton.setText(tr("settings.lang_restart_later"))
+        if box.exec():
+            restart_app()
 
     def _on_theme(self, idx: int):
         self.cfg.theme_mode.value = _THEME_VALUES[idx]
