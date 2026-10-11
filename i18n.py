@@ -162,9 +162,9 @@ _MESSAGES: dict[str, dict[str, str]] = {
     },
     "mode.Ringbuf.title": {"zh": "虚拟缓冲", "en": "Virtual buffer"},
     "mode.Ringbuf.brief": {
-        "zh": "给“爆发式写音频”的游戏兜底(《黑魂2》必须用)",
+        "zh": "给“爆发式写音频”的游戏兜底(《死亡搁浅2》必须用)",
         "en": "Safety net for games that write audio in bursts "
-              "(required for Dark Souls II)",
+              "(required for Death Stranding 2)",
     },
     "mode.Ringbuf.detail": {
         "zh": "游戏以为自己面前有一条很长的缓冲通道, 可以一口气猛写一大批音频;"
@@ -347,11 +347,11 @@ _MESSAGES: dict[str, dict[str, str]] = {
     "wizard.buffer": {"zh": "缓冲帧数", "en": "Buffer frames"},
     "wizard.config_note": {
         "zh": "普通模式: 大多数游戏可用, 缓冲过小会破音\n"
-              "虚拟缓冲: 《黑魂2》需要; UE5 会溢出刷屏; 绝区零丢扬声器声道\n"
+              "虚拟缓冲: 《死亡搁浅2》需要; UE5 会溢出刷屏; 绝区零丢扬声器声道\n"
               "每个游戏必须单独试, 没有通用最优解",
         "en": "Normal: works for most games; too small a buffer crackles\n"
-              "Virtual buffer: required for Dark Souls II; overflows and "
-              "floods logs on UE5; loses the controller speaker channel "
+              "Virtual buffer: required for Death Stranding 2; overflows "
+              "and floods logs on UE5; loses the controller speaker channel "
               "on Zenless Zone Zero\n"
               "Every game must be tested individually — there is no "
               "universal optimum",
