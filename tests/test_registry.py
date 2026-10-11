@@ -138,3 +138,26 @@ def test_load_or_migrate_source_state_skips_legacy(monkeypatch, tmp_path):
     target = str(chain_dir / "games.yaml")
     games = load_or_migrate(target)
     assert "only_legacy" not in games  # 未复制 legacy, 走了 launcher 迁移
+
+
+def test_load_or_migrate_frozen_no_yaml_starts_empty(monkeypatch, tmp_path):
+    """冻结首启: games.yaml 与 legacy 都不存在 → 空注册表, 不抛异常不写盘
+    (真实用户机器上没有 haptic_launcher.py, 不能走 launcher 迁移)。"""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(paths, "DEV_SPECIALK_DIR", str(tmp_path / "no_legacy"))
+    target = str(tmp_path / "chain" / "games.yaml")
+    games = load_or_migrate(target)
+    assert games == {}
+    assert not os.path.exists(target)
+    assert not os.path.exists(target + ".bak")
+
+
+def test_load_or_migrate_frozen_corrupt_yaml_starts_empty(monkeypatch, tmp_path):
+    """冻结态 yaml 损坏: 备份 .bak 后从空注册表起步(不 import launcher)。"""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    target = str(tmp_path / "games.yaml")
+    with open(target, "w", encoding="utf-8") as f:
+        f.write("games: [broken yaml{")
+    games = load_or_migrate(target)
+    assert games == {}
+    assert os.path.isfile(target + ".bak")  # 损坏文件保留

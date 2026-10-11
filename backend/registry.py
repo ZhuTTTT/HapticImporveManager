@@ -118,16 +118,23 @@ def migrate_legacy_chain_yaml(games_yaml_path: str, legacy_dir: str) -> bool:
 
 
 def load_or_migrate(path: str = paths.GAMES_YAML) -> dict[str, GameEntry]:
-    """优先读 games.yaml; 不存在或损坏时(备份 .bak 后)从 launcher 迁移。
+    """优先读 games.yaml; 缺失/损坏时按运行态恢复:
+    冻结态没有 haptic_launcher.py 可迁移(用户机器零依赖), 从空注册表起步;
+    源码态(备份 .bak 后)从 launcher 硬编码 GAMES 迁移。
     冻结态前置一步: 旧 specialk 目录的 games.yaml 复制迁移(真实用户机器上
     旧目录不存在, 自然跳过; 仅开发机从源码/旧版切到冻结版时触发一次)。"""
-    if getattr(sys, "frozen", False):
+    frozen = getattr(sys, "frozen", False)
+    if frozen:
         migrate_legacy_chain_yaml(path, paths.DEV_SPECIALK_DIR)
     try:
         return load_games(path)
     except FileNotFoundError:
+        if frozen:
+            return {}
         return migrate_from_launcher(path)
     except (yaml.YAMLError, KeyError, TypeError, ValueError):
-        # ValueError: buffer_hint 等非整数字段 int() 转换失败, 同样备份后迁移
-        shutil.copy(path, path + ".bak")
+        # ValueError: buffer_hint 等非整数字段 int() 转换失败, 同样备份后恢复
+        shutil.copy(path, path + ".bak")  # 损坏文件两态都保留
+        if frozen:
+            return {}
         return migrate_from_launcher(path)
