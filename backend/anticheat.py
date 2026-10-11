@@ -7,16 +7,20 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from i18n import tr
+
+# 值为 i18n 消息键(ac.*), 显示文案在 scan_exe 运行时 tr() 解析 —
+# 模块级不 tr: import 时求值会冻结在当时的语言
 KNOWN_SIGNATURES = {
-    "easyanticheat": "EasyAntiCheat (EAC)",
-    "beservice": "BattlEye (BEService)",
-    "battleye": "BattlEye",
-    "hoyokprotect": "HoYoKProtect (米哈游)",
-    "mhyprot": "HoYoKProtect (米哈游 mhyprot)",
-    "xigncode": "XIGNCODE",
-    "ace-basis": "腾讯 ACE",
-    "sentry": "腾讯 ACE (Sentry)",
-    "nprotect": "nProtect GameGuard",
+    "easyanticheat": "ac.eac",
+    "beservice": "ac.battleye_service",
+    "battleye": "ac.battleye",
+    "hoyokprotect": "ac.hoyokprotect",
+    "mhyprot": "ac.mhyprot",
+    "xigncode": "ac.xigncode",
+    "ace-basis": "ac.ace",
+    "sentry": "ac.ace_sentry",
+    "nprotect": "ac.nprotect",
 }
 
 
@@ -52,6 +56,6 @@ def _sibling_names(path: str) -> set[str]:
 
 def scan_exe(path: str) -> AnticheatReport:
     names = _imported_dll_names(path) | _sibling_names(path)
-    hits = sorted({label for key, label in KNOWN_SIGNATURES.items()
+    hits = sorted({tr(msg_key) for key, msg_key in KNOWN_SIGNATURES.items()
                    if any(key in n for n in names)})
     return AnticheatReport(risk="known" if hits else "none", hits=hits)

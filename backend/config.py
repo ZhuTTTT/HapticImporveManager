@@ -12,6 +12,8 @@ import os
 import tomlkit
 from tomlkit import TOMLDocument
 
+from i18n import tr
+
 from . import paths
 
 MODES = ("Normal", "Ringbuf", "Compat", "Bypass")
@@ -71,16 +73,18 @@ def _iter_dotted(table: dict):
 
 
 def validate(doc: TOMLDocument) -> list[str]:
+    # problems 经 UI 显示, 走 tr(运行时函数内调用, 合规);
+    # validate.log_level 文案必须含字面量 log_level — UI 按子串过滤该条目
     problems: list[str] = []
     pb = doc.get("playback", {})
 
     mode = pb.get("mode")
     if mode not in MODES:
-        problems.append(f"playback.mode 必须是 {'/'.join(MODES)}, 当前: {mode!r}")
+        problems.append(tr("validate.mode", modes="/".join(MODES), mode=mode))
 
     period = pb.get("target_period_hus", 100)
     if not isinstance(period, int) or not (0 <= period <= 1000):
-        problems.append(f"target_period_hus 必须在 0–1000, 当前: {period!r}")
+        problems.append(tr("validate.period", period=period))
 
     for key in ("target_buffer_len", "ring_buffer_len"):
         sub = pb.get(key)
@@ -88,10 +92,10 @@ def validate(doc: TOMLDocument) -> list[str]:
             continue
         for rate, frames in _iter_dotted(sub):
             if not isinstance(frames, int) or frames <= 0:
-                problems.append(f"{key}.{rate} 必须是正整数帧数, 当前: {frames!r}")
+                problems.append(tr("validate.buffer", field=key, rate=rate,
+                                   frames=frames))
 
     if doc.get("log_level") != "Error":
-        problems.append("log_level 必须为 Error — Info 在 overflow 时可写 GB 级日志"
-                        "(仅排障时临时使用)")
+        problems.append(tr("validate.log_level"))
 
     return problems
