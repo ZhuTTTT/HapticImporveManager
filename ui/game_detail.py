@@ -78,7 +78,7 @@ class GameDetailPage(QWidget):
         self.config_card = ConfigCard(self)
         self.config_card.saved.connect(self.config_changed)
 
-        # 内容列: 最大宽度居中, 宽窗口下不拉伸成"大通铺"
+        # 内容列: 填满右侧(与诊断/设置页一致; 居中限宽会让导航切换时宽度跳变)
         container = QWidget(self)
         cl = QVBoxLayout(container)
         cl.setContentsMargins(0, 0, 0, 0)
@@ -87,12 +87,9 @@ class GameDetailPage(QWidget):
         cl.addWidget(self.status_card)
         cl.addWidget(self.config_card)
         cl.addStretch(1)
-        container.setMaximumWidth(760)
         lay = QHBoxLayout(self)
         lay.setContentsMargins(24, 16, 24, 16)
-        lay.addStretch(1)
-        lay.addWidget(container, 8)
-        lay.addStretch(1)
+        lay.addWidget(container)
 
     def set_game(self, entry: registry.GameEntry) -> bool:
         """切换游戏; 配置卡有未保存修改时先询问, 用户取消则返回 False。"""

@@ -161,3 +161,18 @@ def test_load_or_migrate_frozen_corrupt_yaml_starts_empty(monkeypatch, tmp_path)
     games = load_or_migrate(target)
     assert games == {}
     assert os.path.isfile(target + ".bak")  # 损坏文件保留
+
+
+def test_update_hints_persists_and_noop_for_unknown(tmp_path):
+    """保存配置后回写列表 hint: 已注册游戏更新 mode/buffer, 未注册名不动作。"""
+    from backend import registry
+    p = str(tmp_path / "games.yaml")
+    registry.save_games({"g": registry.GameEntry(name="g", exe="x.exe")}, p)
+
+    registry.update_hints("g", "Ringbuf", 2048, p)
+    e = registry.load_games(p)["g"]
+    assert e.mode_hint == "Ringbuf"
+    assert e.buffer_hint == 2048
+
+    registry.update_hints("ghost", "Normal", 960, p)  # 不存在: 不炸不新增
+    assert list(registry.load_games(p)) == ["g"]

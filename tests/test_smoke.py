@@ -333,3 +333,40 @@ def test_config_card_save_does_not_block_ui(qapp, tmp_path, monkeypatch):
     assert spy.wait(5000)         # 后台完成后发 saved
     assert not card.is_dirty()
     card.deleteLater()
+
+
+def test_config_save_updates_registry_hints(qapp, tmp_path, monkeypatch):
+    """保存配置回写 games.yaml 的 mode_hint/buffer_hint(列表不再显示旧值)。"""
+    from backend import paths, registry
+    entry = _make_game(tmp_path, "g")
+    games_yaml = tmp_path / "games.yaml"
+    registry.save_games({"g": entry}, str(games_yaml))
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+
+    from ui.config_card import ConfigCard
+    card = ConfigCard()
+    card.set_game(entry)
+    card.buf_normal.setValue(512)
+
+    from PySide6.QtTest import QSignalSpy
+    spy = QSignalSpy(card.saved)
+    card.btn_save.click()
+    assert spy.wait(5000)
+    e = registry.load_games(str(games_yaml))["g"]
+    assert e.mode_hint == "Normal"
+    assert e.buffer_hint == 512  # 修复前: 仍为注册时的 960
+    card.deleteLater()
+
+
+def test_game_detail_fills_available_width(qapp, tmp_path):
+    """详情页填满右侧空间(移除 760 限宽的布局回归)。"""
+    from backend import launcher
+    from ui.game_detail import GameDetailPage
+    entry = _make_game(tmp_path, "g")
+    page = GameDetailPage(launcher.ProcessRunner())
+    page.resize(1200, 700)
+    page.set_game(entry)
+    page.show()
+    container = page.layout().itemAt(0).widget()  # 填满后 container 是 HBox 唯一项
+    assert container.width() > 1000  # 修复前: 被 760 上限居中
+    page.deleteLater()

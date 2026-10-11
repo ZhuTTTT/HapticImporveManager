@@ -18,7 +18,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, ComboBox,
                             PushButton, Slider, SpinBox, StateToolTip,
                             StrongBodyLabel, SwitchButton)
 
-from backend import config, launcher
+from backend import config, launcher, paths, registry
 from backend.registry import GameEntry
 from i18n import tr
 from ui import theme
@@ -110,6 +110,7 @@ class ConfigCard(CardWidget):
         self._dirty = False
         self._loading = False
         self._saving = False
+        self._pending_state: FormState | None = None  # _save 时捕获, 成功后回写 hint
         self._save_tip: StateToolTip | None = None
         self._save_thread: QThread | None = None
         self._save_worker: _SaveWorker | None = None
@@ -351,6 +352,7 @@ class ConfigCard(CardWidget):
         self._save_tip.show()
 
         state = self._current_state()
+        self._pending_state = state  # 保存成功后回写注册表 hint 用
         worker = _SaveWorker(self.doc, state, self.entry.game_dir,
                              os.path.basename(self.entry.exe),
                              self.entry.name)
@@ -384,6 +386,13 @@ class ConfigCard(CardWidget):
                             duration=6000)
             return
         self._dirty = False
+        # 回写列表 hint(模式相关缓冲: Ringbuf 取虚拟缓冲, 其余取普通缓冲),
+        # 否则游戏中心列表永远显示注册时的旧值
+        st = self._pending_state
+        registry.update_hints(
+            name, st.mode,
+            st.buf_ring if st.mode == "Ringbuf" else st.buf_normal,
+            str(paths.GAMES_YAML))
         msg = tr("config.saved_msg")
         if running:
             msg += tr("config.saved_running_suffix")

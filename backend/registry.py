@@ -83,6 +83,18 @@ def add_game(entry: GameEntry, path: str = paths.GAMES_YAML) -> None:
     save_games(games, path)
 
 
+def update_hints(name: str, mode_hint: str, buffer_hint: int,
+                 path: str = paths.GAMES_YAML) -> None:
+    """回写列表展示用 hint(配置保存后调用, 否则列表永远显示注册时旧值)。
+    未注册的名字不动作(配置卡可先于注册表写入的场景)。"""
+    games = _try_load(path)
+    if name not in games:
+        return
+    games[name].mode_hint = mode_hint
+    games[name].buffer_hint = buffer_hint
+    save_games(games, path)
+
+
 def remove_game(name: str, path: str = paths.GAMES_YAML) -> None:
     games = _try_load(path)
     games.pop(name, None)
