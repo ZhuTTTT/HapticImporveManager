@@ -29,10 +29,17 @@ def _status_level(entry: registry.GameEntry) -> str:
 
 
 class _GameItemWidget(QWidget):
-    """列表项: 语义色状态点 + 游戏名 + 模式提示。"""
+    """列表项: 语义色状态点 + 游戏名 + 模式提示。
 
-    def __init__(self, entry: registry.GameEntry, level: str, parent=None):
+    内嵌部件会遮蔽 viewport: qfluentwidgets 视图靠 entered 信号驱动的
+    delegate.hoverRow 在行间移动时不更新(高亮停在首次悬停行)。
+    由部件自行上报 enter/leave, 页面据此同步 hoverRow。"""
+    hovered = Signal(int)  # 进入 = 行号, 离开 = -1
+
+    def __init__(self, entry: registry.GameEntry, level: str, row: int,
+                 parent=None):
         super().__init__(parent)
+        self._row = row
         dot = QWidget(self)
         dot.setFixedSize(10, 10)
         c = theme.status_color(level)
@@ -54,6 +61,14 @@ class _GameItemWidget(QWidget):
         lay.addWidget(dot, 0, Qt.AlignmentFlag.AlignVCenter)
         lay.addLayout(text_col, 1)
         lay.addStretch(0)
+
+    def enterEvent(self, e):
+        self.hovered.emit(self._row)
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self.hovered.emit(-1)
+        super().leaveEvent(e)
 
 
 class GamesPage(QWidget):
@@ -126,10 +141,13 @@ class GamesPage(QWidget):
         self._games = registry.load_or_migrate(str(paths.GAMES_YAML))
         self.game_list.blockSignals(True)
         self.game_list.clear()
-        for name, entry in self._games.items():
+        # 重建后 delegate 的旧 hoverRow 已失效, 重置待部件重新上报
+        self.game_list.delegate.setHoverRow(-1)
+        for row, (name, entry) in enumerate(self._games.items()):
             item = QListWidgetItem(self.game_list)
             item.setData(Qt.ItemDataRole.UserRole, name)
-            w = _GameItemWidget(entry, _status_level(entry))
+            w = _GameItemWidget(entry, _status_level(entry), row)
+            w.hovered.connect(self._on_item_hover)
             item.setSizeHint(w.sizeHint())
             self.game_list.setItemWidget(item, w)
         self.game_list.blockSignals(False)
@@ -170,6 +188,11 @@ class GamesPage(QWidget):
                     self.game_list.setCurrentRow(i)
                     self.game_list.blockSignals(False)
                     break
+
+    def _on_item_hover(self, row: int):
+        """内嵌列表项上报的 hover → 同步视图 delegate(高亮跟随鼠标)。"""
+        self.game_list.delegate.setHoverRow(row)
+        self.game_list.viewport().update()
 
     def _on_detail_changed(self, _name: str):
         self.refresh()

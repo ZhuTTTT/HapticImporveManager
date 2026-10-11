@@ -398,3 +398,39 @@ def test_list_dot_updates_after_ifeo_toggle(qapp, tmp_path, monkeypatch):
     new_widget = page.game_list.itemWidget(page.game_list.item(0))
     assert new_widget is not old_widget  # 列表已刷新重建, 状态点变绿
     page.deleteLater()
+
+
+def test_list_hover_follows_item_widgets(qapp, tmp_path, monkeypatch):
+    """内嵌列表项自行上报 hover: delegate.hoverRow 跟随 enter/leave,
+    不再停在首次悬停行(qfluentwidgets 视图 entered 信号被内嵌部件遮蔽)。"""
+    from backend import paths, registry
+    g1 = _make_game(tmp_path, "g1")
+    g2 = _make_game(tmp_path, "g2")
+    games_yaml = tmp_path / "games.yaml"
+    registry.save_games({"g1": g1, "g2": g2}, str(games_yaml))
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+
+    # QTest.mouseMove 在 offscreen 下不合成 enter/leave, 直接投事件
+    from PySide6.QtCore import QEvent, QPointF
+    from PySide6.QtGui import QEnterEvent
+    from ui.games_page import GamesPage
+    page = GamesPage()
+    lw = page.game_list
+    w0 = lw.itemWidget(lw.item(0))
+    w1 = lw.itemWidget(lw.item(1))
+
+    def enter(w):
+        QApplication.sendEvent(
+            w, QEnterEvent(QPointF(1, 1), QPointF(1, 1), QPointF(1, 1)))
+
+    def leave(w):
+        QApplication.sendEvent(w, QEvent(QEvent.Leave))
+
+    enter(w0)
+    assert lw.delegate.hoverRow == 0
+    leave(w0)
+    enter(w1)
+    assert lw.delegate.hoverRow == 1  # 修复前: 停在 -1/旧行不更新
+    leave(w1)
+    assert lw.delegate.hoverRow == -1
+    page.deleteLater()
