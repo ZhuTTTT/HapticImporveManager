@@ -314,7 +314,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
     "wizard.cancel": {"zh": "取消", "en": "Cancel"},
     "wizard.name_placeholder": {
         "zh": "注册名, 小写字母/数字/下划线, 如 ds2",
-        "en": "Registry name: lowercase letters/digits/underscore, "
+        "en": "Internal name: lowercase letters/digits/underscore, "
               "e.g. ds2",
     },
     "wizard.browse": {"zh": "浏览…", "en": "Browse…"},
@@ -323,7 +323,7 @@ _MESSAGES: dict[str, dict[str, str]] = {
     "wizard.ac_ack": {
         "zh": "我已了解: 反作弊游戏注入有封禁风险, 后果自负",
         "en": "I understand: injecting into a game with anti-cheat "
-              "risks a ban, at my own risk",
+              "risks an account ban; I accept the consequences",
     },
     "wizard.ac_known": {
         "zh": "检测到反作弊特征:\n· {hits}\n\n"
