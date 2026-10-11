@@ -30,6 +30,8 @@ native 20–85ms down to ~10ms, and manages the whole injection chain from a GUI
   `injector_debug.log` / `wasapi_relink.log`, with one-click "open in Explorer"
 - **Settings page**: light / dark / follow-system theme, Mica backdrop,
   changeable log directory with batch sync to all registered games
+- **Multi-language**: switch between Follow system / 中文 / English in
+  Settings; takes effect after restart
 
 ## Install & Run
 
