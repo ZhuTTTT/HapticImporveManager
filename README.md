@@ -88,6 +88,8 @@ python -m pytest tests/ -v
 packaging\build_exe.bat
 ```
 
-产出 `dist\HapticImproveManager\`(onedir 模式,含 `chain\` 注入链)。链源码
-路径是脚本顶部的 `SPECIALK` 常量(仅构建期依赖,运行时不需要),按需修改。
-脚本在构建失败时会明确报 `[FAIL]`(例如 exe 正在运行导致 `dist\` 被占用)。
+产出 `dist\HapticImproveManager\`(onedir 模式,含 `chain\` 注入链)及发布用
+`dist\HapticImproveManager.zip`。链源码路径是脚本顶部的 `SPECIALK` 常量
+(仅构建期依赖,运行时不需要),按需修改。`chain\` 每次构建整目录重建,
+本机试跑留下的 `games.yaml` 等运行残留不会进 zip。脚本在构建失败时会明确
+报 `[FAIL]`(例如 exe 正在运行导致 `dist\` 被占用)。

@@ -105,7 +105,10 @@ packaging\build_exe.bat
 ```
 
 Output goes to `dist\HapticImproveManager\` (onedir mode, including the
-`chain\` injection chain). The chain source path is the `SPECIALK` constant at
-the top of the script (build-time only, not needed at runtime) — adjust it as
-needed. The script reports `[FAIL]` explicitly on build errors (e.g. `dist\`
-locked because the exe is still running).
+`chain\` injection chain), plus the release-ready `dist\HapticImproveManager.zip`.
+The chain source path is the `SPECIALK` constant at the top of the script
+(build-time only, not needed at runtime) — adjust it as needed. `chain\` is
+rebuilt from scratch on every build, so runtime leftovers from local test runs
+(e.g. a personal `games.yaml`) never leak into the zip. The script reports
+`[FAIL]` explicitly on build errors (e.g. `dist\` locked because the exe is
+still running).
