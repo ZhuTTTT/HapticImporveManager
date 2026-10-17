@@ -27,7 +27,7 @@ def _isolate_backend_paths(tmp_path, monkeypatch):
     """把注册表/注入器日志指向 tmp_path, 避免读真实文件。
 
     不隔离时: 首个游戏缺 redirect_config.toml 会在 offscreen 下弹模态框,
-    pytest 无超时挂死; games.yaml 缺失还会往真实 specialk 目录写迁移文件。
+    pytest 无超时挂死; games.yaml 缺失还会读写真实 chain/ 目录的注册表。
     """
     from backend import paths
     games_yaml = tmp_path / "games.yaml"
@@ -190,6 +190,49 @@ def test_game_detail_remove_stops_ifeo_poll(qapp, tmp_path, monkeypatch):
     assert not page._ifeo_timer.isActive()
     assert registry.load_games(str(games_yaml)) == {}
     page._poll_ifeo()  # entry=None 时守卫直接返回, 不得抛 AttributeError
+    page.deleteLater()
+
+
+def test_remove_with_ifeo_on_waits_for_off(qapp, tmp_path, monkeypatch):
+    """移除自动注入开启的游戏: 先关 IFEO, 落定(OFF)后才删注册表项;
+    UAC 取消(超时仍 ON)则中止移除、游戏保留。"""
+    from backend import ifeo, launcher, paths, registry
+    from backend.ifeo import IfeoState
+    import ui.game_detail as gd
+    monkeypatch.setattr(gd, "MessageBox", _AcceptBox)
+    entry = _make_game(tmp_path, "g")
+    games_yaml = tmp_path / "games.yaml"
+    registry.save_games({"g": entry}, str(games_yaml))
+    monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+
+    calls = []
+    monkeypatch.setattr(launcher, "set_ifeo",
+                        lambda r, name, on: calls.append((name, on)))
+    state = {"cur": IfeoState.ON_OURS}
+    monkeypatch.setattr(ifeo, "query_ifeo", lambda _n: state["cur"])
+
+    page = gd.GameDetailPage(launcher.ProcessRunner())
+    page.set_game(entry)
+    page._remove()
+    # IFEO 开着: 不移除, 先发起 off 并进入待移除轮询(顺序反了 launcher
+    # 按名字反查 games.yaml 会 unknown game)
+    assert calls == [("g", False)]
+    assert page.entry is not None and page._pending_remove
+    assert set(registry.load_games(str(games_yaml))) == {"g"}
+
+    # 模拟 UAC 取消: 状态一直 ON_OURS, 轮询超时 → 中止移除, 游戏保留
+    page._poll_count = 9
+    page._poll_ifeo()
+    assert not page._pending_remove
+    assert page.entry is not None
+    assert set(registry.load_games(str(games_yaml))) == {"g"}
+
+    # 重试: 这次 off 落定(OFF) → 真正移除
+    page._remove()
+    state["cur"] = IfeoState.OFF
+    page._poll_ifeo()
+    assert registry.load_games(str(games_yaml)) == {}
+    assert page.entry is None
     page.deleteLater()
 
 

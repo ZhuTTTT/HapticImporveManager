@@ -29,6 +29,7 @@ class GameDetailPage(QWidget):
         super().__init__(parent)
         self.runner = runner
         self.entry: registry.GameEntry | None = None
+        self._pending_remove = False  # 移除流程: 已发起 IFEO off, 等轮询落定
         self._ifeo_timer = QTimer(self)
         self._ifeo_timer.setInterval(1000)
         self._ifeo_timer.timeout.connect(self._poll_ifeo)
@@ -100,6 +101,8 @@ class GameDetailPage(QWidget):
             if not box.exec():
                 return False
         self._ifeo_timer.stop()  # 换游戏时停掉旧轮询
+        self._pending_remove = False  # 挂起的移除流程随旧游戏作废
+        self.btn_remove.setEnabled(True)
         self.entry = entry
         self.name_label.setText(entry.name)
         self.path_label.setText(entry.exe)
@@ -151,6 +154,23 @@ class GameDetailPage(QWidget):
             return
         self._poll_count += 1
         state = ifeo.query_ifeo(os.path.basename(self.entry.exe))
+        if self._pending_remove:
+            # 移除流程: 等 IFEO off 落定后才能真正删注册表项(launcher 的
+            # ifeo 子命令要按名字反查 games.yaml, 先删会 unknown game)
+            if state == IfeoState.OFF:
+                self._ifeo_timer.stop()
+                self._do_remove()
+            elif self._poll_count >= 10:
+                # UAC 被取消或关闭失败: 中止移除, 游戏保留, 不留注册表残留
+                self._ifeo_timer.stop()
+                self._pending_remove = False
+                self.btn_remove.setEnabled(True)
+                InfoBar.warning(tr("detail.remove_title"),
+                                tr("detail.remove_ifeo_failed"),
+                                parent=self, position=InfoBarPosition.TOP,
+                                duration=4000)
+                self.refresh_status()
+            return
         want = IfeoState.ON_OURS if self.ifeo_switch.isChecked() \
             else IfeoState.OFF
         if state == want or self._poll_count >= 10:
@@ -168,13 +188,30 @@ class GameDetailPage(QWidget):
             launcher.launch_game(self.runner, self.entry.name)
 
     def _remove(self):
-        if self.entry is None:
+        if self.entry is None or self._pending_remove:
             return
         box = MessageBox(tr("detail.remove_title"),
                          tr("detail.remove_confirm", name=self.entry.name),
                          self)
-        if box.exec():
-            self._ifeo_timer.stop()  # 移除即停轮询, entry 置 None 后不再触发
-            registry.remove_game(self.entry.name, str(paths.GAMES_YAML))
-            self.entry = None
-            self.config_changed.emit("")  # 空串 = 当前游戏被移除, 请刷新
+        if not box.exec():
+            return
+        self._ifeo_timer.stop()  # 移除即停轮询, entry 置 None 后不再触发
+        state = ifeo.query_ifeo(os.path.basename(self.entry.exe))
+        if state == IfeoState.ON_OURS:
+            # 自动注入开着: 先关 IFEO(launcher 内部 UAC 提权), 轮询落定后
+            # 才移除 — 顺序反了 launcher 按名字反查 games.yaml 会 unknown game。
+            # ON_OTHER 是别人的调试器, 不动; OFF 无需提权, 直接移除。
+            self._pending_remove = True
+            self.btn_remove.setEnabled(False)
+            launcher.set_ifeo(self.runner, self.entry.name, False)
+            self._poll_count = 0
+            self._ifeo_timer.start()
+            return
+        self._do_remove()
+
+    def _do_remove(self):
+        self._pending_remove = False
+        self.btn_remove.setEnabled(True)
+        registry.remove_game(self.entry.name, str(paths.GAMES_YAML))
+        self.entry = None
+        self.config_changed.emit("")  # 空串 = 当前游戏被移除, 请刷新
