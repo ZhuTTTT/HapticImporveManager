@@ -66,7 +66,9 @@ def read_display_hint(game_dir: str) -> tuple[str, int] | None:
     except Exception:  # 缺失(FileNotFoundError)/损坏(tomlkit 解析异常)统一回退
         return None
     pb = doc.get("playback", {})
-    mode = pb.get("mode", "Normal")
+    # tomlkit 的 String 是 str 子类但不是内建 str — yaml.safe_dump 无法表示,
+    # 返回值必须收敛为内建类型(调用方会把它写回 games.yaml)
+    mode = str(pb.get("mode", "Normal"))
     if mode == "Ringbuf":
         sub, default = pb.get("ring_buffer_len", {}), 4320
     else:

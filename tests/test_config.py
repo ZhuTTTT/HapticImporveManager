@@ -64,6 +64,23 @@ def test_read_display_hint_missing_or_corrupt_returns_none(tmp_path):
     assert read_display_hint(str(tmp_path)) is None  # 解析失败
 
 
+def test_read_display_hint_returns_plain_builtin_types(tmp_path):
+    """返回值必须是内建 str/int — tomlkit String 是 str 子类,
+    yaml.safe_dump 无法表示(启动时 hint 收敛写 games.yaml 直接
+    RepresenterError 崩启动的回归)。"""
+    from backend import registry
+    doc = default_config()
+    save_config(str(tmp_path), doc)
+    from backend.config import read_display_hint
+    mode, frames = read_display_hint(str(tmp_path))
+    assert type(mode) is str
+    assert type(frames) is int
+    # 端到端: 返回值可直接写回 games.yaml 不炸
+    p = str(tmp_path / "games.yaml")
+    registry.save_games({"g": registry.GameEntry(name="g", exe="x.exe")}, p)
+    registry.update_hints("g", mode, frames, p)
+
+
 def test_validate_rejects_bad_period():
     doc = default_config()
     doc["playback"]["target_period_hus"] = 5000
