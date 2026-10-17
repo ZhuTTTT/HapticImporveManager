@@ -43,7 +43,16 @@ if exist "%CHAIN_OUT%" rmdir /s /q "%CHAIN_OUT%" || goto :fail
 
 rem 两个链 exe 均无窗: IFEO 拉起不闪窗; GUI QProcess 拉起也不弹控制台
 rem (launcher 的 stdout 诊断输出因此不可得, 诊断数据以 injector 的结果/日志文件为准)
-python -m PyInstaller --noconfirm --clean --onefile --windowed --specpath build --collect-all winsdk --distpath %CHAIN_OUT% --name injector chain\injector.py || goto :fail
+rem
+rem injector 用 onedir 并平铺到 chain 根(exe 路径不变, IFEO 注册表值零迁移):
+rem onefile 每次运行解包 %TEMP%\_MEI*, 退出时清理 — 绝区零 HoYoKProtect
+rem 初始化扫描父进程链会瞬锁该目录, 看门狗删不掉就弹 "Failed to remove
+rem temporary directory" 警告; onedir 不解包, 从根上消除这个警告类别
+python -m PyInstaller --noconfirm --clean --onedir --windowed --specpath build --collect-all winsdk --distpath %CHAIN_OUT% --name injector chain\injector.py || goto :fail
+xcopy /E /I /Y /Q "%CHAIN_OUT%\injector\*" "%CHAIN_OUT%\" >nul || goto :fail
+rmdir /s /q "%CHAIN_OUT%\injector" || goto :fail
+rem haptic_launcher 保持 onefile: 只被 GUI 以完整路径调用, 无注册表引用,
+rem 且不接触游戏进程链, 没有上述锁目录触发条件
 python -m PyInstaller --noconfirm --clean --onefile --windowed --specpath build --distpath %CHAIN_OUT% --name haptic_launcher chain\haptic_launcher.py || goto :fail
 copy /Y chain\wasapi_relink.dll %CHAIN_OUT%\ || goto :fail
 
@@ -51,8 +60,9 @@ rem 第三方组件许可证随包携带(wasapi_relink 是 Apache-2.0, 再分发
 if not exist "dist\HapticImproveManager\licenses" mkdir "dist\HapticImproveManager\licenses"
 copy /Y licenses\wasapi_relink.LICENSE.txt "dist\HapticImproveManager\licenses\" || goto :fail
 
-rem 完备性校验: 两个 exe + DLL 任一缺失即失败
+rem 完备性校验: 两个 exe + injector 运行时目录 + DLL 任一缺失即失败
 if not exist "%CHAIN_OUT%\injector.exe" goto :fail
+if not exist "%CHAIN_OUT%\_internal\python3.dll" goto :fail
 if not exist "%CHAIN_OUT%\haptic_launcher.exe" goto :fail
 if not exist "%CHAIN_OUT%\wasapi_relink.dll" goto :fail
 
