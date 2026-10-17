@@ -32,8 +32,15 @@ haptic 音频缓冲从原生 20–85ms 压到 ~10ms,用图形界面管理整个�
 
 ### 方式一:下载成品(推荐)
 
-从 [Releases](../../releases) 下载 `HapticImproveManager.zip`,解压后双击
-`HapticImproveManager.exe`(整目录拷走才可用,勿只拷 exe)。
+从 [Releases](../../releases) 下载:
+
+- **`HapticImproveManager-Setup-x.y.z.exe`(安装程序,推荐)**——双击安装到
+  `C:\Program Files\HapticImproveManager`(安装需一次 UAC;自动创建开始菜单
+  快捷方式、给 `chain\` 目录授写权限使应用免管理员运行)。升级直接覆盖安装,
+  游戏注册表与 IFEO 设置自动保留;卸载时自动清理 IFEO 注册表项
+- **`HapticImproveManager.zip`(便携版)**——解压后双击
+  `HapticImproveManager.exe`(整目录拷走才可用,勿只拷 exe;解压位置需可写,
+  不要放进 Program Files)
 
 > 零依赖,解压即用:注入链已随包冻结分发——`chain/` 下的 `injector.exe`、
 > `haptic_launcher.exe` 与 `wasapi_relink.dll`,无需安装 Python
@@ -63,6 +70,9 @@ python app.py
 另外,个别游戏(如《绝区零》)的 exe 自带"要求管理员"清单,启动时 Windows
 会对游戏本身弹 UAC——这是游戏自身的行为,与本工具无关。
 
+使用安装程序时,**安装/卸载本身**也会各弹一次 UAC(写入 Program Files 与
+开始菜单需要管理员权限),这属于安装器行为,与应用运行无关。
+
 ## 工作原理
 
 PC 游戏把 DualSense haptic 渲染成音频流,经 WASAPI 共享模式送入手柄音频端点
@@ -87,7 +97,8 @@ HapticImporveManager/
 │   └─ wasapi_relink.dll    #   被注入的核心 DLL(第三方, Apache-2.0)
 ├─ i18n.py                  # 中英双语文案
 ├─ tests/                   # pytest 测试套件
-├─ packaging/build_exe.bat  # 一键打包脚本
+├─ packaging/               # 打包: build_exe.bat(应用+链 zip)
+│                           #         installer.iss + build_installer.bat(Inno 安装程序)
 ├─ licenses/                # 第三方组件许可证文本
 └─ docs/superpowers/        # 设计与实现文档
 ```
@@ -104,6 +115,7 @@ python -m pip install -r requirements.txt
 python app.py                    # 源码态运行(GUI 直接使用 chain/ 下的 .py 链)
 python -m pytest tests/ -v       # 测试
 packaging\build_exe.bat          # 打包: dist\HapticImproveManager\ + 发布 zip
+packaging\build_installer.bat    # 完整发版: 上一条 + Inno 安装程序(需 Inno Setup 6)
 ```
 
 打包完全自包含:GUI 冻结为 onedir exe,`chain/` 链源码冻结为

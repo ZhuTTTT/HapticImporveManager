@@ -39,9 +39,17 @@ native 20–85ms down to ~10ms, and manages the whole injection chain from a GUI
 
 ### Option 1: Download the build (recommended)
 
-Download `HapticImproveManager.zip` from [Releases](../../releases), extract
-it, and double-click `HapticImproveManager.exe` (keep the whole folder
-together — copying just the exe won't work).
+Download from [Releases](../../releases):
+
+- **`HapticImproveManager-Setup-x.y.z.exe` (installer, recommended)** —
+  installs to `C:\Program Files\HapticImproveManager` (one UAC prompt;
+  creates a Start Menu shortcut and grants write access to `chain\` so the
+  app itself never needs admin). Upgrades install right over the top — the
+  game registry and IFEO settings carry over; uninstalling cleans up the
+  IFEO registry entries automatically
+- **`HapticImproveManager.zip` (portable)** — extract and double-click
+  `HapticImproveManager.exe` (keep the whole folder together; extract to a
+  writable location, not Program Files)
 
 > Zero dependencies, ready to run: the injection chain ships frozen in the
 > package — `injector.exe`, `haptic_launcher.exe`, and `wasapi_relink.dll`
@@ -75,6 +83,10 @@ Separately, some games (e.g. Zenless Zone Zero) ship an exe whose own manifest
 requires administrator — Windows shows a UAC prompt for the game itself when it
 launches. That is the game's own behavior, unrelated to this tool.
 
+With the installer, **installing/uninstalling** also shows one UAC prompt each
+(writing to Program Files and the Start Menu needs admin) — that's the
+installer, not the app.
+
 ## How It Works
 
 PC games render DualSense haptics as an audio stream and push it through
@@ -102,7 +114,8 @@ HapticImporveManager/
 │   └─ wasapi_relink.dll    #   The injected core DLL (third-party, Apache-2.0)
 ├─ i18n.py                  # Chinese/English strings
 ├─ tests/                   # pytest suite
-├─ packaging/build_exe.bat  # One-click packaging script
+├─ packaging/               # Packaging: build_exe.bat (app+chain zip)
+│                           #             installer.iss + build_installer.bat (Inno installer)
 ├─ licenses/                # Third-party license texts
 └─ docs/superpowers/        # Design and implementation docs
 ```
@@ -121,6 +134,7 @@ python -m pip install -r requirements.txt
 python app.py                    # Run from source (the GUI uses the .py chain in chain/)
 python -m pytest tests/ -v       # Tests
 packaging\build_exe.bat          # Package: dist\HapticImproveManager\ + release zip
+packaging\build_installer.bat    # Full release: the above + Inno installer (needs Inno Setup 6)
 ```
 
 Packaging is fully self-contained: the GUI is frozen as an onedir exe, and the
