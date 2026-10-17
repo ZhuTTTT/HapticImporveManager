@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (QFormLayout, QGridLayout, QHBoxLayout,
                                QVBoxLayout, QWidget)
 from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, ComboBox,
@@ -227,14 +227,12 @@ class ConfigCard(CardWidget):
             self.doc = config.load_config(entry.game_dir)
         except FileNotFoundError:
             self.doc = None
-            box = MessageBox(tr("config.missing_title"),
-                             tr("config.missing_msg", name=entry.name), self)
-            if box.exec():
-                self.doc = config.default_config(APP_CFG.log_dir.value)
-                config.save_config(entry.game_dir, self.doc)
-            else:
-                self._set_form_enabled(False)
-                return
+            self._set_form_enabled(False)
+            # 弹窗必须推迟到事件循环: set_game 可能在主窗口 show() 之前
+            # (启动时首个选中游戏)被调用, 此时模态 exec 会阻塞在不可见的
+            # 父窗口上 — 进程活着但永远没界面, 用户只能看到"打不开"
+            QTimer.singleShot(0, lambda: self._prompt_missing_config(entry))
+            return
         except Exception as e:  # tomlkit 解析失败: 显示原文, 禁表单
             self.doc = None
             self._set_form_enabled(False)
@@ -245,6 +243,18 @@ class ConfigCard(CardWidget):
             return
         self._set_form_enabled(True)
         self._fill(load_form(self.doc))
+
+    def _prompt_missing_config(self, entry: GameEntry):
+        """配置缺失询问(已推迟到窗口可见后); 期间用户已切走则不打扰。"""
+        if self.entry is not entry:
+            return
+        box = MessageBox(tr("config.missing_title"),
+                         tr("config.missing_msg", name=entry.name), self)
+        if box.exec():
+            self.doc = config.default_config(APP_CFG.log_dir.value)
+            config.save_config(entry.game_dir, self.doc)
+            self._set_form_enabled(True)
+            self._fill(load_form(self.doc))
 
     def _set_form_enabled(self, on: bool):
         for w in (*self.mode_cards.values(), self.period_slider,

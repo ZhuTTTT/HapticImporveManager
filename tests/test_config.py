@@ -31,7 +31,6 @@ def test_load_missing_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         load_config(str(tmp_path))
 
-
 def test_validate_rejects_bad_mode():
     doc = default_config()
     doc["playback"]["mode"] = "Turbo"

@@ -57,11 +57,16 @@ def save_games(games: dict[str, GameEntry], path: str = paths.GAMES_YAML) -> Non
         d = asdict(e)
         d.pop("name")  # name 是 YAML 键, 不重复存为字段
         payload["games"][name] = d
+    # 先序列化再原子替换: 直接 open("w") 会在 dump 抛异常时留下截断的
+    # 损坏文件(真实事故: tomlkit String 触发 RepresenterError 清空了注册表)
+    text = yaml.safe_dump(payload, allow_unicode=True, sort_keys=False)
     parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)  # 用户数据目录可能尚未创建
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(payload, f, allow_unicode=True, sort_keys=False)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(tmp, path)
 
 
 def _try_load(path: str) -> dict[str, GameEntry]:

@@ -339,13 +339,34 @@ def test_settings_language_change_restart_flow(qapp, tmp_path, monkeypatch):
     page.deleteLater()
 
 
+def test_config_card_missing_config_defers_prompt(qapp, tmp_path, monkeypatch):
+    """配置缺失时 set_game 不同步弹模态框(推迟到事件循环) — 启动期主窗口
+    未 show 时同步模态 exec 会阻塞在不可见父窗口上: 进程活着但没界面,
+    用户只能看到"打不开"(v0.4.3 骨架条目触发此陷阱的真实事故)。"""
+    import ui.config_card as cc
+    from backend.registry import GameEntry
+
+    def _boom(*a, **k):
+        raise AssertionError("synchronous MessageBox during set_game")
+
+    monkeypatch.setattr(cc, "MessageBox", _boom)
+    d = tmp_path / "g"
+    d.mkdir()
+    exe = d / "g.exe"
+    exe.write_text("", encoding="utf-8")  # 故意不放 redirect_config.toml
+    card = cc.ConfigCard()
+    card.set_game(GameEntry(name="g", exe=str(exe)))  # 不抛不阻塞
+    assert card.doc is None
+    assert not card.btn_save.isEnabled()  # 表单禁用, 等延迟弹窗的结果
+    card.deleteLater()
+
+
 def test_config_card_buffer_visibility_follows_mode(qapp, tmp_path):
     """缓冲项与模式联动: 不适用当前模式的整组(标签+输入+说明)直接隐藏。"""
     from ui.config_card import ConfigCard
     entry = _make_game(tmp_path, "g")  # 默认配置 mode=Normal
     card = ConfigCard()
     card.set_game(entry)
-
     assert not card.buf_normal_label.isHidden()   # Normal → 显示缓冲大小
     assert card.buf_ring_label.isHidden()         #        隐藏虚拟缓冲
 

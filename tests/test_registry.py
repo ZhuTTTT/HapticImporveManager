@@ -36,6 +36,23 @@ def test_add_and_remove(yaml_path):
     assert set(load_games(yaml_path)) == {"b"}
 
 
+def test_save_games_atomic_on_dump_failure(yaml_path, monkeypatch):
+    """序列化中途抛异常不损坏原文件(先 dump 成字符串再原子替换 —
+    真实事故: RepresenterError 曾把注册表清空, 引发连锁启动崩溃)。"""
+    save_games({"a": GameEntry(name="a", exe="x.exe")}, yaml_path)
+    with open(yaml_path, encoding="utf-8") as f:
+        original = f.read()
+
+    def _boom(*a, **k):
+        raise ValueError("dump failed")
+
+    monkeypatch.setattr(yaml, "safe_dump", _boom)
+    with pytest.raises(ValueError):
+        save_games({"b": GameEntry(name="b", exe="y.exe")}, yaml_path)
+    with open(yaml_path, encoding="utf-8") as f:
+        assert f.read() == original
+
+
 def test_derived_properties():
     e = GameEntry(name="x", exe=r"E:\game dir\game.exe")
     assert e.game_dir == r"E:\game dir"
