@@ -81,6 +81,50 @@ _MESSAGES: dict[str, dict[str, str]] = {
               "(config missing or corrupt — fix it from the game's detail page)",
     },
 
+    # 旧版注册表残留清理
+    "settings.cleanup": {"zh": "旧版注册表残留", "en": "Legacy registry leftovers"},
+    "settings.cleanup_caption": {
+        "zh": "旧版本/旧安装位置留下的 IFEO 自动注入项。失效残留会让游戏"
+              "无法启动, 建议清理; 清理需一次 UAC 提权。",
+        "en": "IFEO auto-inject entries left by old versions or old install "
+              "locations. Broken leftovers prevent games from launching — "
+              "cleaning is recommended and needs one UAC elevation.",
+    },
+    "settings.cleanup_rescan": {"zh": "重新扫描", "en": "Rescan"},
+    "settings.cleanup_run": {"zh": "清理全部", "en": "Clean up all"},
+    "settings.cleanup_empty": {
+        "zh": "未发现旧版残留 ✓",
+        "en": "No legacy leftovers found ✓",
+    },
+    "settings.cleanup_broken": {
+        "zh": "失效: 目标已删除, 该游戏会无法启动",
+        "en": "Broken: target deleted — this game will fail to launch",
+    },
+    "settings.cleanup_legacy": {
+        "zh": "旧位置: 仍可用, 指向另一处安装",
+        "en": "Old location: still functional, points to another install",
+    },
+    "settings.cleanup_confirm_title": {
+        "zh": "清理注册表残留",
+        "en": "Clean up registry leftovers",
+    },
+    "settings.cleanup_confirm_msg": {
+        "zh": "将删除 {n} 条 IFEO 自动注入项(其中 {broken} 条已失效), "
+              "对应游戏将不再被自动注入。\n需要一次 UAC 提权, 继续?",
+        "en": "This will delete {n} IFEO auto-inject entries ({broken} of "
+              "them broken); the affected games will no longer be "
+              "auto-injected.\nOne UAC elevation is required. Continue?",
+    },
+    "settings.cleanup_done_msg": {
+        "zh": "清理完成, 注册表残留已删除",
+        "en": "Done — registry leftovers removed",
+    },
+    "settings.cleanup_failed_msg": {
+        "zh": "部分项未删除(提权被取消或操作失败), 请重试",
+        "en": "Some entries were not removed (elevation cancelled or the "
+              "operation failed) — please retry",
+    },
+
     # 通用开关
     "common.on":  {"zh": "开", "en": "On"},
     "common.off": {"zh": "关", "en": "Off"},

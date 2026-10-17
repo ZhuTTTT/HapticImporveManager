@@ -123,6 +123,25 @@ def ifeo(name: str, action: str):
         raise SystemExit("action must be on|off|status")
 
 
+def ifeo_rm(subkey_names: list[str]):
+    """按 IFEO 子键名(exe 文件名)批量删除 Debugger 值 — GUI 旧版残留清理。
+
+    与 ifeo off 不同: 不按游戏名反查 games.yaml(残留项的游戏可能早已
+    不在注册表), 直接操作子键; 只删 Debugger 值, 不动子键与其他值。"""
+    import winreg
+    if not _is_admin():
+        _elevate()
+    for sub in subkey_names:
+        key_path = IFEO_BASE + "\\" + sub
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0,
+                                winreg.KEY_SET_VALUE) as k:
+                winreg.DeleteValue(k, "Debugger")
+            print(f"{sub}: Debugger removed")
+        except FileNotFoundError:
+            print(f"{sub}: no entry")
+
+
 def _injector_cmd() -> list[str]:
     """启动注入器的命令行前缀: 冻结态直接调随包的 injector.exe,
     源码态走当前解释器跑 injector.py。"""
@@ -132,6 +151,9 @@ def _injector_cmd() -> list[str]:
 
 
 def main():
+    if len(sys.argv) >= 3 and sys.argv[1] == "ifeo-rm":
+        ifeo_rm(sys.argv[2:])
+        return
     if len(sys.argv) >= 3 and sys.argv[1] == "ifeo":
         name = sys.argv[2].lower()
         if name not in load_games():

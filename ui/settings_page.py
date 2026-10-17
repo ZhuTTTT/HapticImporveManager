@@ -1,17 +1,18 @@
-"""设置页: 语言 / 主题 / Mica / 日志目录(可改 + 一键打开 + 批量同步)。"""
+"""设置页: 语言 / 主题 / Mica / 日志目录(可改 + 一键打开 + 批量同步)
+/ 旧版注册表残留清理。"""
 from __future__ import annotations
 
 import os
 import subprocess
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import QFileDialog, QHBoxLayout, QVBoxLayout, QWidget
 from qfluentwidgets import (BodyLabel, CaptionLabel, ComboBox, LineEdit,
-                            MessageBox, PushButton, StrongBodyLabel,
-                            SwitchButton, TitleLabel, InfoBar,
-                            InfoBarPosition)
+                            MessageBox, PlainTextEdit, PushButton,
+                            StrongBodyLabel, SwitchButton, TitleLabel,
+                            InfoBar, InfoBarPosition)
 
-from backend import paths, registry
+from backend import ifeo, launcher, paths, registry
 from i18n import tr
 from ui.app_config import AppConfig, apply_theme
 from ui.log_dir_sync import sync_log_dir
@@ -81,6 +82,28 @@ class SettingsPage(QWidget):
         lay.addWidget(StrongBodyLabel(tr("settings.log_dir"), self))
         lay.addWidget(CaptionLabel(tr("settings.log_dir_caption"), self))
         lay.addLayout(dir_row)
+
+        # 旧版注册表残留清理
+        lay.addWidget(StrongBodyLabel(tr("settings.cleanup"), self))
+        lay.addWidget(CaptionLabel(tr("settings.cleanup_caption"), self))
+        self.legacy_view = PlainTextEdit(self)
+        self.legacy_view.setReadOnly(True)
+        self.legacy_view.setMaximumHeight(120)
+        lay.addWidget(self.legacy_view)
+        self.btn_rescan = PushButton(tr("settings.cleanup_rescan"), self)
+        self.btn_rescan.clicked.connect(self._scan_legacy)
+        self.btn_cleanup = PushButton(tr("settings.cleanup_run"), self)
+        self.btn_cleanup.clicked.connect(self._cleanup_legacy)
+        cleanup_row = QHBoxLayout()
+        cleanup_row.addWidget(self.btn_rescan)
+        cleanup_row.addWidget(self.btn_cleanup)
+        cleanup_row.addStretch(1)
+        lay.addLayout(cleanup_row)
+        self._legacy: list[ifeo.LegacyEntry] = []
+        self.runner = launcher.ProcessRunner(self)
+        self.runner.done.connect(self._on_cleanup_done)
+        self._scan_legacy()
+
         lay.addStretch(1)
 
     def _on_language(self, idx: int):
@@ -139,3 +162,53 @@ class SettingsPage(QWidget):
         d = self.cfg.log_dir.value
         os.makedirs(d, exist_ok=True)
         subprocess.Popen(["explorer", d])
+
+    # --- 旧版注册表残留清理 ---
+
+    def _scan_legacy(self):
+        self._legacy = ifeo.scan_legacy()
+        if not self._legacy:
+            self.legacy_view.setPlainText(tr("settings.cleanup_empty"))
+        else:
+            lines = []
+            for e in self._legacy:
+                tag = tr("settings.cleanup_broken" if e.broken
+                         else "settings.cleanup_legacy")
+                lines.append(f"{e.exe_name}  [{tag}]\n    {e.debugger}")
+            self.legacy_view.setPlainText("\n".join(lines))
+        self.btn_cleanup.setEnabled(bool(self._legacy))
+
+    def _cleanup_legacy(self):
+        if not self._legacy:
+            return
+        n_broken = sum(1 for e in self._legacy if e.broken)
+        box = MessageBox(
+            tr("settings.cleanup_confirm_title"),
+            tr("settings.cleanup_confirm_msg",
+               n=len(self._legacy), broken=n_broken),
+            self)
+        if not box.exec():
+            return
+        self.btn_cleanup.setEnabled(False)
+        launcher.remove_ifeo_entries(
+            self.runner, [e.exe_name for e in self._legacy])
+
+    def _on_cleanup_done(self, _code: int):
+        # launcher 提权后原进程直接 exit(0), 完成码不代表删除结果 —
+        # 提权进程异步写注册表, 稍候重扫以实际状态为准
+        QTimer.singleShot(1500, self._verify_cleanup)
+
+    def _verify_cleanup(self):
+        before = {e.exe_name for e in self._legacy}
+        self._scan_legacy()
+        remaining = before & {e.exe_name for e in self._legacy}
+        if remaining:
+            InfoBar.warning(tr("settings.cleanup_confirm_title"),
+                            tr("settings.cleanup_failed_msg"),
+                            parent=self, position=InfoBarPosition.TOP,
+                            duration=4000)
+        else:
+            InfoBar.success(tr("settings.cleanup_confirm_title"),
+                            tr("settings.cleanup_done_msg"),
+                            parent=self, position=InfoBarPosition.TOP,
+                            duration=3000)

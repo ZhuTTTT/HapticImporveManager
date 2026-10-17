@@ -68,6 +68,11 @@ def set_ifeo(runner: ProcessRunner, name: str, on: bool) -> None:
     runner.start(ifeo.build_ifeo_args(name, "on" if on else "off"))
 
 
+def remove_ifeo_entries(runner: ProcessRunner, exe_names: list[str]) -> None:
+    """按 IFEO 子键名批量删除旧版残留 Debugger 值(launcher 内自行 UAC)。"""
+    runner.start(ifeo.build_ifeo_rm_args(exe_names))
+
+
 def is_game_running(exe_name: str) -> bool:
     """tasklist 查进程, 无第三方依赖。"""
     proc = subprocess.run(
