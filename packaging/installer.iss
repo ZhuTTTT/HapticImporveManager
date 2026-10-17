@@ -54,6 +54,14 @@ Source: "dist\HapticImproveManager\*"; DestDir: "{app}"; \
 Name: "{group}\HapticImproveManager"; Filename: "{app}\HapticImproveManager.exe"
 Name: "{autodesktop}\HapticImproveManager"; Filename: "{app}\HapticImproveManager.exe"; Tasks: desktopicon
 
+[Run]
+; 完成页「打开应用」勾选框(默认勾上)。runasoriginaluser: 安装器是提权
+; 运行的, 必须以原始用户身份拉起 — 应用本体永远普通权限运行;
+; skipifsilent: 静默安装不拉起
+Filename: "{app}\HapticImproveManager.exe"; \
+  Description: "{cm:LaunchProgram,HapticImproveManager}"; \
+  Flags: nowait postinstall skipifsilent runasoriginaluser
+
 [Code]
 { 卸载时清理指向本安装目录的 IFEO Debugger 值:
   值是路径字符串, 逐 IFEO 子键扫描比对; 只删 Debugger 值(与 launcher 的
