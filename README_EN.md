@@ -18,7 +18,9 @@ native 20–85ms down to ~10ms, and manages the whole injection chain from a GUI
 
 - **Game hub**: game list on the left (status dot + search), detail page on the
   right. Selecting a game sets the context — status badge, IFEO auto-inject
-  toggle, game launching, and injection config all belong to the current game
+  toggle, game launching, and injection config all belong to the current game.
+  Removing a game also turns off its IFEO auto-inject, leaving no registry
+  leftovers
 - **Plain-language injection config**: four modes (Normal / Virtual Buffer /
   Compatibility / Hands-off) as card-style radio options, every setting
   explained in plain words, buffer frames converted to milliseconds in real
@@ -42,14 +44,8 @@ it, and double-click `HapticImproveManager.exe` (keep the whole folder
 together — copying just the exe won't work).
 
 > Zero dependencies, ready to run: the injection chain ships frozen in the
-> package — `injector.exe`, `haptic_launcher.exe`, and
-> `zzz_inject/wasapi_relink.dll` under `chain/`. No Python or any external
-> dependency required.
-
-> **Upgrading from ≤v0.2.0**: toggle IFEO off and back on once for each game.
-> The old pythonw-based debugger value left in the registry no longer matches,
-> so the game status shows "IFEO is taken by another debugger" until you
-> re-toggle — that fixes it.
+> package — `injector.exe`, `haptic_launcher.exe`, and `wasapi_relink.dll`
+> under `chain/`. No Python or any external dependency required.
 
 ### Option 2: Run from source
 
@@ -60,6 +56,25 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
+## Permissions (when UAC pops up)
+
+The app itself **always runs unelevated** — never launch it as administrator.
+However, IFEO auto-inject lives under an `HKLM` registry key, so changing it
+needs admin rights; the bundled launcher elevates itself via UAC on demand.
+A UAC prompt in the following situations is expected:
+
+1. **Enabling IFEO auto-inject** (last step of the add-game wizard, or the
+   IFEO toggle on the detail page)
+2. **Disabling IFEO auto-inject** (the same toggle)
+3. **Removing a game** whose auto-inject is on — IFEO is turned off first,
+   then the game is removed. Clicking "Cancel" on that UAC prompt aborts the
+   removal and keeps the game in the list (so no invisible registry leftover
+   is left behind)
+
+Separately, some games (e.g. Zenless Zone Zero) ship an exe whose own manifest
+requires administrator — Windows shows a UAC prompt for the game itself when it
+launches. That is the game's own behavior, unrelated to this tool.
+
 ## How It Works
 
 PC games render DualSense haptics as an audio stream and push it through
@@ -67,48 +82,79 @@ WASAPI shared mode to the controller's audio endpoint (4 channels: ch1/2 =
 speakers, ch3/4 = haptic motors). The audio buffer the game requests
 (20–85ms) is the main source of haptic latency.
 
-The injection chain bundled with this tool (`injector.exe` /
-`haptic_launcher.exe` under `chain/`, developed in the specialk project and
-frozen at build time) injects the
+The injection chain (source lives in this repo's `chain/` directory, frozen
+into exes at build time) injects the
 [wasapi_relink](https://github.com/Litttlefish/wasapi_relink) DLL into the
 game process, shrinking the buffer at the WASAPI level and pacing the writes.
 This GUI handles game registration, config editing (`redirect_config.toml`),
 IFEO auto-injection management, and log diagnostics.
 
-## Architecture
+## Project Structure
 
-Thin GUI (PySide6 + [PySide6-Fluent-Widgets](https://github.com/zhiyiYo/PySide6-Fluent-Widgets))
-+ subprocess backend. The GUI runs unelevated; the launcher escalates via UAC
-on its own when toggling IFEO.
+```
+HapticImporveManager/
+├─ app.py                   # Entry point
+├─ backend/                 # Backend: path constants / game registry / IFEO / config / logs
+├─ ui/                      # PySide6 + Fluent Widgets UI (thin GUI, unelevated)
+├─ chain/                   # Injection chain (single source of truth, frozen into the package)
+│   ├─ injector.py          #   Launched by IFEO, windowless; CreateProcess + remote-thread injection
+│   ├─ haptic_launcher.py   #   GUI subprocess / CLI; self-elevates via UAC for IFEO toggles
+│   └─ wasapi_relink.dll    #   The injected core DLL (third-party, Apache-2.0)
+├─ i18n.py                  # Chinese/English strings
+├─ tests/                   # pytest suite
+├─ packaging/build_exe.bat  # One-click packaging script
+├─ licenses/                # Third-party license texts
+└─ docs/superpowers/        # Design and implementation docs
+```
 
-- The injection chain ships frozen under `chain/`: `injector.exe` (launched by
-  IFEO, windowless), `haptic_launcher.exe` (GUI subprocess), and
-  `zzz_inject/wasapi_relink.dll`; `games.yaml` and injection logs are written
-  there at runtime
-- The game registry `games.yaml` is shared between the GUI and the CLI
-- `ui/config_model.py` is a pure-function form ↔ TOML mapping (unit-testable,
-  comment-preserving)
-- GUI settings (theme / log directory) live in
-  `%APPDATA%/HapticImproveManager/gui_config.json`
-- Design and implementation docs are in `docs/superpowers/`
+Runtime data is self-contained inside the app folder: `chain/games.yaml` (the
+game registry, shared by the GUI and the CLI) and injection logs
+(`chain/logs/`, `injector_result.txt`, etc.). The only exception is
+`redirect_config.toml`, written next to each game exe (the injection config
+read by wasapi_relink). GUI settings (theme / log directory) live in
+`%APPDATA%/HapticImproveManager/gui_config.json`.
 
-## Tests
+## Development
 
 ```bash
-python -m pytest tests/ -v
+python -m pip install -r requirements.txt
+python app.py                    # Run from source (the GUI uses the .py chain in chain/)
+python -m pytest tests/ -v       # Tests
+packaging\build_exe.bat          # Package: dist\HapticImproveManager\ + release zip
 ```
 
-## Build the exe yourself
+Packaging is fully self-contained: the GUI is frozen as an onedir exe, and the
+`chain/` sources are frozen into `injector.exe` / `haptic_launcher.exe` and
+bundled with `wasapi_relink.dll` under `dist\HapticImproveManager\chain\` — no
+machine-specific path constants anywhere. `chain\` is rebuilt from scratch on
+every build, so runtime leftovers from local test runs (e.g. a personal
+`games.yaml`) never leak into the zip. The script reports `[FAIL]` explicitly
+on build errors (e.g. `dist\` locked because the exe is still running).
 
-```cmd
-packaging\build_exe.bat
-```
+When editing the chain sources, note that `IFEO_VALUE` is computed by the same
+rule in three places — `backend/paths.py`, `chain/injector.py`, and
+`chain/haptic_launcher.py` (the GUI uses it to recognize its own Debugger
+value in the registry). Keep all three in sync; `tests/test_paths.py` has a
+consistency test as a safety net.
 
-Output goes to `dist\HapticImproveManager\` (onedir mode, including the
-`chain\` injection chain), plus the release-ready `dist\HapticImproveManager.zip`.
-The chain source path is the `SPECIALK` constant at the top of the script
-(build-time only, not needed at runtime) — adjust it as needed. `chain\` is
-rebuilt from scratch on every build, so runtime leftovers from local test runs
-(e.g. a personal `games.yaml`) never leak into the zip. The script reports
-`[FAIL]` explicitly on build errors (e.g. `dist\` locked because the exe is
-still running).
+## Acknowledgments
+
+- [wasapi_relink](https://github.com/Litttlefish/wasapi_relink) (Litttlefish) —
+  the core of haptic low latency: the DLL injected into game processes to
+  shrink the audio buffer at the WASAPI level, redistributed under the
+  Apache-2.0 license (see `licenses/`)
+- [PySide6-Fluent-Widgets](https://github.com/zhiyiYo/PySide6-Fluent-Widgets)
+  (zhiyiYo) — the Fluent Design component library behind the entire UI
+- [XXMI](https://github.com/SpectrumQT/XXMI) / [3DMigoto](https://github.com/bo3b/3DMigoto)
+  communities — the injection approach in `chain/injector.py`: launching the
+  game as its creator, using the full-access handle returned by CreateProcess
+  to bypass anti-cheat handle stripping
+
+## License
+
+[MIT](LICENSE) — free to use, modify, and redistribute (including
+commercially), as long as the copyright notice is kept.
+
+Third-party component: `wasapi_relink.dll` is redistributed under the
+[Apache-2.0](licenses/wasapi_relink.LICENSE.txt) license, copyright
+Litttlefish.
