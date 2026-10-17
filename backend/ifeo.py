@@ -62,16 +62,15 @@ def _extract_target(debugger: str) -> str | None:
     return parts[-1] if parts else None
 
 
-def scan_legacy() -> list[LegacyEntry]:
-    """扫全量 IFEO 子键, 返回带我们签名但不等于当前运行态值的残留项。
+def _scan_ours() -> list[tuple[str, str]]:
+    """扫全量 IFEO 子键, 返回所有 Debugger 值带我们签名的 (子键名, 值)。
 
-    当前值(paths.IFEO_VALUE)由详情页开关正常管理, 不算残留;
-    别人的调试器(不带签名)一律不碰。"""
-    results: list[LegacyEntry] = []
+    别人的调试器(不带签名)一律不包含。"""
+    found: list[tuple[str, str]] = []
     try:
         base = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, paths.IFEO_BASE)
     except FileNotFoundError:
-        return results
+        return found
     with base:
         i = 0
         while True:
@@ -85,15 +84,31 @@ def scan_legacy() -> list[LegacyEntry]:
                     val, _ = winreg.QueryValueEx(k, "Debugger")
             except (FileNotFoundError, OSError):
                 continue
-            low = val.lower()
-            if not any(sig in low for sig in _OUR_SIGNATURES):
-                continue
-            if val == paths.IFEO_VALUE:
-                continue
-            target = _extract_target(val)
-            results.append(LegacyEntry(
-                sub, val,
-                os.path.isfile(target) if target else False))
+            if any(sig in val.lower() for sig in _OUR_SIGNATURES):
+                found.append((sub, val))
+    return found
+
+
+def scan_ours_exe_names() -> list[str]:
+    """所有带我们签名的 IFEO 子键名(= 曾开启自动注入的游戏 exe 文件名)。
+
+    当前值与旧位置值都包含 — 冷启/手动同步据此重建游戏列表。"""
+    return [sub for sub, _ in _scan_ours()]
+
+
+def scan_legacy() -> list[LegacyEntry]:
+    """扫全量 IFEO 子键, 返回带我们签名但不等于当前运行态值的残留项。
+
+    当前值(paths.IFEO_VALUE)由详情页开关正常管理, 不算残留;
+    别人的调试器(不带签名)一律不碰。"""
+    results: list[LegacyEntry] = []
+    for sub, val in _scan_ours():
+        if val == paths.IFEO_VALUE:
+            continue
+        target = _extract_target(val)
+        results.append(LegacyEntry(
+            sub, val,
+            os.path.isfile(target) if target else False))
     return results
 
 

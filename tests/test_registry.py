@@ -83,3 +83,43 @@ def test_update_hints_persists_and_noop_for_unknown(tmp_path):
 
     registry.update_hints("ghost", "Normal", 960, p)  # 不存在: 不炸不新增
     assert list(registry.load_games(p)) == ["g"]
+
+
+# --- sync_from_registry: 从 IFEO 注册表重建游戏列表 ---
+
+def test_sync_from_registry_adds_skeletons(monkeypatch, tmp_path):
+    """注册表里带我们签名的项 → 骨架条目(exe 暂存文件名, 待「定位 exe」)。"""
+    from backend import ifeo, registry
+    monkeypatch.setattr(ifeo, "scan_ours_exe_names",
+                        lambda: ["DS2.exe", "SB-Win64-Shipping.exe"])
+    p = str(tmp_path / "games.yaml")
+    added, skipped = registry.sync_from_registry(p)
+    assert added == ["ds2", "sb-win64-shipping"]
+    assert skipped == []
+    games = registry.load_games(p)
+    assert games["ds2"].exe == "DS2.exe"
+    assert not games["ds2"].exe_exists  # 非全路径: 状态点显示 exe 丢失
+
+
+def test_sync_from_registry_skips_known_and_keeps_paths(monkeypatch, tmp_path):
+    """exe 已注册的跳过(不覆盖既有全路径); 只增量补新。"""
+    from backend import ifeo, registry
+    monkeypatch.setattr(ifeo, "scan_ours_exe_names",
+                        lambda: ["DS2.exe", "New.exe"])
+    p = str(tmp_path / "games.yaml")
+    registry.save_games(
+        {"ds2": registry.GameEntry(name="ds2", exe=r"E:\games\DS2.exe")}, p)
+    added, skipped = registry.sync_from_registry(p)
+    assert added == ["new"]
+    assert skipped == ["DS2.exe"]
+    assert registry.load_games(p)["ds2"].exe == r"E:\games\DS2.exe"
+
+
+def test_update_exe(tmp_path):
+    from backend import registry
+    p = str(tmp_path / "games.yaml")
+    registry.save_games({"g": registry.GameEntry(name="g", exe="G.exe")}, p)
+    registry.update_exe("g", r"E:\games\G.exe", p)
+    assert registry.load_games(p)["g"].exe == r"E:\games\G.exe"
+    registry.update_exe("ghost", r"E:\x.exe", p)  # 未注册名不动作
+    assert list(registry.load_games(p)) == ["g"]

@@ -75,6 +75,43 @@ def add_game(entry: GameEntry, path: str = paths.GAMES_YAML) -> None:
     save_games(games, path)
 
 
+def update_exe(name: str, new_path: str, path: str = paths.GAMES_YAML) -> None:
+    """更新已注册游戏的 exe 路径(同步重建的骨架条目「定位 exe」用)。"""
+    games = _try_load(path)
+    if name not in games:
+        return
+    games[name].exe = new_path
+    save_games(games, path)
+
+
+def sync_from_registry(path: str = paths.GAMES_YAML
+                       ) -> tuple[list[str], list[str]]:
+    """从 IFEO 注册表重建游戏列表(单向: 注册表 → games.yaml)。
+
+    凡带我们签名的 IFEO 项(当前值/旧位置值都算, 见 ifeo.scan_ours)且
+    列表中尚无同名 exe 的, 建骨架条目: exe 暂存文件名(非全路径,
+    状态点显示「exe 丢失」, 用户在详情页「定位 exe」补全路径)。
+    返回 (新增的名字, 已存在而跳过的名字)。"""
+    from . import ifeo  # 函数内导入: registry ← ifeo 单向依赖, 防循环
+    games = _try_load(path)
+    known_exes = {os.path.basename(e.exe).lower() for e in games.values()}
+    added, skipped = [], []
+    for exe_name in ifeo.scan_ours_exe_names():
+        if exe_name.lower() in known_exes:
+            skipped.append(exe_name)
+            continue
+        name = os.path.splitext(exe_name)[0].lower()
+        base, i = name, 2
+        while name in games:  # 同名不同 exe 的极小概率冲突: 加序号
+            name = f"{base}{i}"
+            i += 1
+        games[name] = GameEntry(name=name, exe=exe_name)
+        added.append(name)
+    if added:
+        save_games(games, path)
+    return added, skipped
+
+
 def update_hints(name: str, mode_hint: str, buffer_hint: int,
                  path: str = paths.GAMES_YAML) -> None:
     """回写列表展示用 hint(配置保存后调用, 否则列表永远显示注册时旧值)。

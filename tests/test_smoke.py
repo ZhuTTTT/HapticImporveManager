@@ -27,9 +27,11 @@ def _isolate_backend_paths(tmp_path, monkeypatch):
     """把注册表/注入器日志指向 tmp_path, 避免读真实文件。
 
     不隔离时: 首个游戏缺 redirect_config.toml 会在 offscreen 下弹模态框,
-    pytest 无超时挂死; games.yaml 缺失还会读写真实 chain/ 目录的注册表。
+    pytest 无超时挂死; games.yaml 缺失还会读写真实 chain/ 目录的注册表;
+    冷启同步会扫真实 IFEO 注册表(开发机有 5 条)并建骨架条目 — 骨架
+    无配置同样触发模态框, 一并隔离。
     """
-    from backend import paths
+    from backend import ifeo, paths
     games_yaml = tmp_path / "games.yaml"
     games_yaml.write_text("games: {}\n", encoding="utf-8")
     monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
@@ -37,6 +39,7 @@ def _isolate_backend_paths(tmp_path, monkeypatch):
                         str(tmp_path / "injector_result.txt"))
     monkeypatch.setattr(paths, "INJECTOR_DEBUG_LOG",
                         str(tmp_path / "injector_debug.log"))
+    monkeypatch.setattr(ifeo, "scan_ours_exe_names", lambda: [])
 
 
 def test_main_window_instantiates(qapp, tmp_path, monkeypatch):
@@ -52,11 +55,13 @@ def test_main_window_instantiates(qapp, tmp_path, monkeypatch):
 
 
 def test_games_page_instantiates(qapp, tmp_path, monkeypatch):
-    from backend import paths
+    from backend import ifeo, paths
     # 造一个临时 games.yaml, 避免读真实注册表
     games_yaml = tmp_path / "games.yaml"
     games_yaml.write_text("games: {}\n", encoding="utf-8")
     monkeypatch.setattr(paths, "GAMES_YAML", str(games_yaml))
+    # 冷启同步会扫真实 IFEO 注册表(开发机有 5 条) — 测试隔离为空
+    monkeypatch.setattr(ifeo, "scan_ours_exe_names", lambda: [])
 
     from ui.games_page import GamesPage
     page = GamesPage()

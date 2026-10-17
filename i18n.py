@@ -132,6 +132,21 @@ _MESSAGES: dict[str, dict[str, str]] = {
     # 游戏页
     "games.search_placeholder": {"zh": "搜索游戏…", "en": "Search games…"},
     "games.add":         {"zh": "添加游戏", "en": "Add game"},
+    "games.sync":        {"zh": "同步", "en": "Sync"},
+    "games.sync_tip": {
+        "zh": "从 IFEO 注册表重建游戏列表(找回曾开启自动注入的游戏)",
+        "en": "Rebuild the game list from IFEO registry entries (recover "
+              "games that had auto-inject enabled)",
+    },
+    "games.sync_added": {
+        "zh": "已从注册表找回 {n} 个游戏; exe 丢失的请在详情页「定位 exe」补全路径",
+        "en": "Recovered {n} game(s) from the registry; for any showing "
+              "\"exe missing\", use \"Locate exe\" on the detail page",
+    },
+    "games.sync_none": {
+        "zh": "注册表中没有可找回的新游戏",
+        "en": "No new games to recover from the registry",
+    },
     "games.empty_title": {"zh": "还没有游戏", "en": "No games yet"},
     "games.empty_caption": {
         "zh": "点击左下角「添加游戏」, 四步完成接入",
@@ -191,6 +206,20 @@ _MESSAGES: dict[str, dict[str, str]] = {
         "zh": "未能关闭自动注入(提权被取消或操作失败), 游戏未移除, 请重试",
         "en": "Could not turn off auto-inject (elevation cancelled or the "
               "operation failed). The game was NOT removed — please retry.",
+    },
+    "detail.locate_exe": {"zh": "定位 exe", "en": "Locate exe"},
+    "detail.locate_exe_tip": {
+        "zh": "从注册表同步重建的条目缺少完整路径, 指认一次游戏 exe 即可恢复",
+        "en": "Entries rebuilt from the registry lack the full path — point "
+              "to the game exe once to restore",
+    },
+    "detail.locate_exe_title": {
+        "zh": "选择游戏可执行文件",
+        "en": "Choose the game executable",
+    },
+    "detail.locate_exe_filter": {
+        "zh": "可执行文件 (*.exe)",
+        "en": "Executable (*.exe)",
     },
     "detail.ifeo_failed_msg": {
         "zh": "提权被取消或操作失败, 状态未变更",

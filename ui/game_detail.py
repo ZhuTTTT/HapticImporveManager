@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QVBoxLayout, QWidget)
 from qfluentwidgets import (BodyLabel, CaptionLabel, CardWidget, FluentIcon,
                             InfoBar, InfoBarPosition, MessageBox,
                             PrimaryPushButton, PushButton, StrongBodyLabel,
@@ -41,6 +41,10 @@ class GameDetailPage(QWidget):
         self.btn_launch = PrimaryPushButton(FluentIcon.PLAY,
                                             tr("detail.launch"), self)
         self.btn_launch.clicked.connect(self._launch)
+        self.btn_locate = PushButton(FluentIcon.FOLDER,
+                                     tr("detail.locate_exe"), self)
+        self.btn_locate.setToolTip(tr("detail.locate_exe_tip"))
+        self.btn_locate.clicked.connect(self._locate_exe)
         self.btn_remove = PushButton(FluentIcon.DELETE, tr("detail.remove"),
                                      self)
         self.btn_remove.clicked.connect(self._remove)
@@ -50,6 +54,7 @@ class GameDetailPage(QWidget):
         title_col.addWidget(self.path_label)
         head = QHBoxLayout()
         head.addLayout(title_col, 1)
+        head.addWidget(self.btn_locate, 0, Qt.AlignmentFlag.AlignTop)
         head.addWidget(self.btn_launch, 0, Qt.AlignmentFlag.AlignTop)
         head.addWidget(self.btn_remove, 0, Qt.AlignmentFlag.AlignTop)
 
@@ -138,6 +143,21 @@ class GameDetailPage(QWidget):
         self.ifeo_switch.setChecked(state == IfeoState.ON_OURS)
         self.ifeo_switch.blockSignals(False)
         self.btn_launch.setEnabled(e.exe_exists)
+        # 「定位 exe」仅 exe 丢失时显示(典型: 注册表同步重建的骨架条目)
+        self.btn_locate.setVisible(not e.exe_exists)
+
+    def _locate_exe(self):
+        if self.entry is None:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, tr("detail.locate_exe_title"), "",
+            tr("detail.locate_exe_filter"))
+        if not path:
+            return
+        registry.update_exe(self.entry.name, path, str(paths.GAMES_YAML))
+        self.entry.exe = path
+        self.set_game(self.entry)  # 重载: 状态徽章/按钮可见性/配置卡刷新
+        self.config_changed.emit(self.entry.name)  # 列表状态点同步
 
     def _on_ifeo_toggled(self, checked: bool):
         if self.entry is None:

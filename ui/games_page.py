@@ -7,7 +7,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QListWidgetItem, QStackedWidget,
                                QVBoxLayout, QWidget)
 from qfluentwidgets import (BodyLabel, CaptionLabel, FluentIcon, IconWidget,
-                            ListWidget, PrimaryPushButton, SearchLineEdit,
+                            InfoBar, InfoBarPosition, ListWidget,
+                            PrimaryPushButton, PushButton, SearchLineEdit,
                             StrongBodyLabel)
 
 from backend import config, ifeo, launcher, paths, registry
@@ -85,6 +86,9 @@ class GamesPage(QWidget):
         self.search.textChanged.connect(self._filter)
         self.btn_add = PrimaryPushButton(FluentIcon.ADD, tr("games.add"), self)
         self.btn_add.clicked.connect(self._add_game)
+        self.btn_sync = PushButton(FluentIcon.SYNC, tr("games.sync"), self)
+        self.btn_sync.setToolTip(tr("games.sync_tip"))
+        self.btn_sync.clicked.connect(self._sync_from_registry)
         self.game_list = ListWidget(self)
         self.game_list.currentRowChanged.connect(self._on_select)
 
@@ -93,7 +97,11 @@ class GamesPage(QWidget):
         left.setSpacing(8)
         left.addWidget(self.search)
         left.addWidget(self.game_list, 1)
-        left.addWidget(self.btn_add)
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(6)
+        btn_row.addWidget(self.btn_add, 1)
+        btn_row.addWidget(self.btn_sync)
+        left.addLayout(btn_row)
         left_host = QWidget(self)
         left_host.setLayout(left)
         left_host.setFixedWidth(240)
@@ -130,6 +138,28 @@ class GamesPage(QWidget):
 
         self._games: dict[str, registry.GameEntry] = {}
         self.refresh()
+        self._cold_start_sync()
+
+    def _cold_start_sync(self):
+        """冷启: 列表为空时自动从 IFEO 注册表重建(全新安装/丢失 games.yaml
+        的场景); 非空不动作(用户主动移除的条目不应每次启动复活)。"""
+        if not self._games:
+            added, _ = registry.sync_from_registry(str(paths.GAMES_YAML))
+            if added:
+                self.refresh()
+
+    def _sync_from_registry(self):
+        added, skipped = registry.sync_from_registry(str(paths.GAMES_YAML))
+        if added or skipped:
+            self.refresh()
+        if added:
+            InfoBar.success(
+                tr("games.sync"), tr("games.sync_added", n=len(added)),
+                parent=self, position=InfoBarPosition.TOP, duration=3000)
+        else:
+            InfoBar.info(
+                tr("games.sync"), tr("games.sync_none"),
+                parent=self, position=InfoBarPosition.TOP, duration=3000)
 
     def _item_name(self, row: int) -> str | None:
         item = self.game_list.item(row)
@@ -141,8 +171,11 @@ class GamesPage(QWidget):
         self._games = registry.load_or_migrate(str(paths.GAMES_YAML))
         # 列表 hint 以游戏目录里的真实 redirect_config.toml 为准:
         # games.yaml 的 hint 只在 GUI 保存时回写, 外部改 toml/旧版本存档会
-        # 让列表帧数永久失真; 每次刷新顺带把 yaml hint 收敛回真实值
+        # 让列表帧数永久失真; 每次刷新顺带把 yaml hint 收敛回真实值。
+        # 骨架条目(exe 未定位, 非绝对路径)没有游戏目录可读, 跳过
         for name, entry in self._games.items():
+            if not os.path.isabs(entry.exe):
+                continue
             hint = config.read_display_hint(entry.game_dir)
             if hint is not None and hint != (entry.mode_hint,
                                              entry.buffer_hint):
