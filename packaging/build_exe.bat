@@ -62,7 +62,7 @@ copy /Y licenses\wasapi_relink.LICENSE.txt "dist\HapticImproveManager\licenses\"
 
 rem 完备性校验: 两个 exe + injector 运行时目录 + DLL 任一缺失即失败
 if not exist "%CHAIN_OUT%\injector.exe" goto :fail
-if not exist "%CHAIN_OUT%\_internal\python3.dll" goto :fail
+if not exist "%CHAIN_OUT%\_internal\base_library.zip" goto :fail
 if not exist "%CHAIN_OUT%\haptic_launcher.exe" goto :fail
 if not exist "%CHAIN_OUT%\wasapi_relink.dll" goto :fail
 
