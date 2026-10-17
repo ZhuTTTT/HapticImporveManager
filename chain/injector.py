@@ -35,7 +35,8 @@ kernel32.OpenProcess.restype = wintypes.HANDLE
 kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
 kernel32.VirtualAllocEx.restype = wintypes.LPVOID
 kernel32.VirtualAllocEx.argtypes = [wintypes.HANDLE, wintypes.LPVOID,
-                                    ctypes.c_size_t, wintypes.DWORD]
+                                    ctypes.c_size_t, wintypes.DWORD,
+                                    wintypes.DWORD]
 kernel32.WriteProcessMemory.argtypes = [wintypes.HANDLE, wintypes.LPVOID,
                                         wintypes.LPCVOID, ctypes.c_size_t,
                                         ctypes.POINTER(ctypes.c_size_t)]

@@ -28,6 +28,25 @@ def test_ifeo_value_matches_chain_sources():
     assert paths.IFEO_VALUE.endswith('injector.py" ifeo')
 
 
+def test_injector_ctypes_argtypes_complete():
+    """chain/injector.py 的 ctypes 声明参数个数必须与真实 Win32 API 一致。
+
+    v0.4.0/0.4.1 回归: VirtualAllocEx.argtypes 少一个 DWORD(4/5),
+    ctypes 调用即 TypeError, 全线注入失败 — 此类错误只有显式断言能拦住。"""
+    sys.path.insert(0, paths.CHAIN_DIR)
+    try:
+        injector_mod = importlib.import_module("injector")
+    finally:
+        sys.path.remove(paths.CHAIN_DIR)
+    k = injector_mod.kernel32
+    expected = {"OpenProcess": 3, "VirtualAllocEx": 5,
+                "WriteProcessMemory": 5,
+                "GetProcAddress": 2, "CreateRemoteThread": 7,
+                "CreateProcessW": 10}
+    for func, n in expected.items():
+        assert len(getattr(k, func).argtypes) == n, func
+
+
 def test_chain_dir_source_state():
     """源码态: CHAIN_DIR 即仓库根/chain, 派生路径全部在其下。"""
     repo_root = os.path.dirname(os.path.dirname(
