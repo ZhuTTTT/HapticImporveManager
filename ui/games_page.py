@@ -10,7 +10,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, FluentIcon, IconWidget,
                             ListWidget, PrimaryPushButton, SearchLineEdit,
                             StrongBodyLabel)
 
-from backend import ifeo, launcher, paths, registry
+from backend import config, ifeo, launcher, paths, registry
 from backend.config import MODES
 from backend.ifeo import IfeoState
 from i18n import tr
@@ -45,12 +45,12 @@ class _GameItemWidget(QWidget):
         c = theme.status_color(level)
         dot.setStyleSheet(f"background: {c}; border-radius: 5px;")
         name = BodyLabel(entry.name, self)
-        # mode_hint 是注册表中的模式键(Normal/…), 显示时译为模式卡标题;
-        # 意外值(手改 yaml)原样显示而不露出消息键
         mode_titles = {m: tr(f"mode.{m}.title") for m in MODES}
-        hint = CaptionLabel(
-            f"{mode_titles.get(entry.mode_hint, entry.mode_hint)} · "
-            f"{tr('unit.frames', n=entry.buffer_hint)}", self)
+        title = mode_titles.get(entry.mode_hint, entry.mode_hint)
+        # 帧数只对 Normal/Ringbuf 有意义(配置卡对 Compat/Bypass 也隐藏缓冲项)
+        if entry.mode_hint in ("Normal", "Ringbuf"):
+            title += f" · {tr('unit.frames', n=entry.buffer_hint)}"
+        hint = CaptionLabel(title, self)
         text_col = QVBoxLayout()
         text_col.setContentsMargins(0, 0, 0, 0)
         text_col.setSpacing(0)
@@ -139,6 +139,16 @@ class GamesPage(QWidget):
         # 记住当前上下文, 重建列表后按名恢复选中(保存配置不跳回第一款)
         prev = self.detail.entry.name if self.detail.entry is not None else None
         self._games = registry.load_or_migrate(str(paths.GAMES_YAML))
+        # 列表 hint 以游戏目录里的真实 redirect_config.toml 为准:
+        # games.yaml 的 hint 只在 GUI 保存时回写, 外部改 toml/旧版本存档会
+        # 让列表帧数永久失真; 每次刷新顺带把 yaml hint 收敛回真实值
+        for name, entry in self._games.items():
+            hint = config.read_display_hint(entry.game_dir)
+            if hint is not None and hint != (entry.mode_hint,
+                                             entry.buffer_hint):
+                registry.update_hints(name, hint[0], hint[1],
+                                      str(paths.GAMES_YAML))
+                entry.mode_hint, entry.buffer_hint = hint
         self.game_list.blockSignals(True)
         self.game_list.clear()
         # 重建后 delegate 的旧 hoverRow 已失效, 重置待部件重新上报

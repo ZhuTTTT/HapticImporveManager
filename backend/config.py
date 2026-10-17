@@ -55,6 +55,25 @@ def config_file(game_dir: str) -> str:
     return os.path.join(game_dir, "redirect_config.toml")
 
 
+def read_display_hint(game_dir: str) -> tuple[str, int] | None:
+    """从 redirect_config.toml 推导列表展示用的 (模式, 帧数)。
+
+    帧数取模式相关缓冲: Ringbuf 取 ring_buffer_len, 其余取 target_buffer_len。
+    配置缺失/损坏返回 None(调用方回退 games.yaml 里的 hint)。
+    与 config_card 保存时的 update_hints 取值规则一致。"""
+    try:
+        doc = load_config(game_dir)
+    except Exception:  # 缺失(FileNotFoundError)/损坏(tomlkit 解析异常)统一回退
+        return None
+    pb = doc.get("playback", {})
+    mode = pb.get("mode", "Normal")
+    if mode == "Ringbuf":
+        sub, default = pb.get("ring_buffer_len", {}), 4320
+    else:
+        sub, default = pb.get("target_buffer_len", {}), 960
+    return mode, int(next(iter(sub.values()), default))
+
+
 def load_config(game_dir: str) -> TOMLDocument:
     with open(config_file(game_dir), encoding="utf-8") as f:
         return tomlkit.parse(f.read())

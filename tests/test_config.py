@@ -38,6 +38,32 @@ def test_validate_rejects_bad_mode():
     assert any("mode" in p for p in validate(doc))
 
 
+def test_read_display_hint_normal(tmp_path):
+    """Normal 模式: 帧数取 target_buffer_len。"""
+    doc = default_config()
+    doc["playback"]["target_buffer_len"]["48000"] = 512
+    save_config(str(tmp_path), doc)
+    from backend.config import read_display_hint
+    assert read_display_hint(str(tmp_path)) == ("Normal", 512)
+
+
+def test_read_display_hint_ringbuf_uses_ring_buffer(tmp_path):
+    """Ringbuf 模式: 帧数取 ring_buffer_len 而非 target_buffer_len。"""
+    doc = default_config()
+    doc["playback"]["mode"] = "Ringbuf"
+    doc["playback"]["ring_buffer_len"]["48000"] = 2048
+    save_config(str(tmp_path), doc)
+    from backend.config import read_display_hint
+    assert read_display_hint(str(tmp_path)) == ("Ringbuf", 2048)
+
+
+def test_read_display_hint_missing_or_corrupt_returns_none(tmp_path):
+    from backend.config import read_display_hint
+    assert read_display_hint(str(tmp_path)) is None  # 文件缺失
+    (tmp_path / "redirect_config.toml").write_text("[broken{", encoding="utf-8")
+    assert read_display_hint(str(tmp_path)) is None  # 解析失败
+
+
 def test_validate_rejects_bad_period():
     doc = default_config()
     doc["playback"]["target_period_hus"] = 5000
