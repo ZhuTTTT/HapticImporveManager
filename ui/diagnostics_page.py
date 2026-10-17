@@ -53,12 +53,11 @@ class DiagnosticsPage(QWidget):
             vl.addWidget(view)
             self.log_views[key] = view
             self.stack.addWidget(host)
-            self.tabs.addItem(
-                routeKey=key,
-                text=key,
-                onClick=lambda k=key: self.stack.setCurrentIndex(
-                    0 if k == "injector_debug" else 1),
-            )
+            self.tabs.addItem(routeKey=key, text=key)
+        # 切换走 currentItemChanged: Pivot.itemClicked 是 Signal(bool),
+        # addItem(onClick=lambda k=key:) 会让信号参数顶掉默认 k(恒为 True),
+        # 永远切到同一页 — 表现为"只有第一次点击能切换"
+        self.tabs.currentItemChanged.connect(self._on_tab_changed)
         self.tabs.setCurrentItem("injector_debug")
 
         self.btn_open = PushButton(tr("settings.log_dir_open"), self)
@@ -81,6 +80,10 @@ class DiagnosticsPage(QWidget):
 
     def relink_log_path(self) -> str:
         return os.path.join(APP_CFG.log_dir.value, "wasapi_relink.log")
+
+    def _on_tab_changed(self, route_key: str):
+        self.stack.setCurrentIndex(
+            0 if route_key == "injector_debug" else 1)
 
     def _path_of(self, key: str) -> str:
         return str(paths.INJECTOR_DEBUG_LOG) if key == "injector_debug" \

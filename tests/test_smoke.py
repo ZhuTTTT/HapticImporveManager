@@ -126,6 +126,30 @@ def test_diagnostics_page(qapp, tmp_path, monkeypatch):
     page.deleteLater()
 
 
+def test_diag_tabs_switch_both_ways(qapp, tmp_path, monkeypatch):
+    """日志选项卡双向切换: Pivot.itemClicked 是 Signal(bool), 曾让
+    addItem 的 lambda 默认参数被信号 bool 顶掉(恒切同一页) —
+    表现为只有第一次点击能切, 回不来。"""
+    from backend import paths
+    result = tmp_path / "injector_result.txt"
+    result.write_text("x", encoding="utf-8")
+    dbg = tmp_path / "injector_debug.log"
+    dbg.write_text("y", encoding="utf-8")
+    monkeypatch.setattr(paths, "INJECTOR_RESULT", str(result))
+    monkeypatch.setattr(paths, "INJECTOR_DEBUG_LOG", str(dbg))
+
+    from ui.diagnostics_page import DiagnosticsPage
+    page = DiagnosticsPage()
+    assert page.stack.currentIndex() == 0
+    page.tabs.items["wasapi_relink"].click()
+    assert page.stack.currentIndex() == 1
+    page.tabs.items["injector_debug"].click()  # 修复前: 停在 1 回不来
+    assert page.stack.currentIndex() == 0
+    page.tabs.items["wasapi_relink"].click()
+    assert page.stack.currentIndex() == 1
+    page.deleteLater()
+
+
 # --- Task 9 收尾断言: 新入口接线 ---
 
 
