@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">HapticImproveManager 图标</title>
+  <desc id="desc">紫色圆角方形背景上的白色手柄剪影，中央穿过一条紫色震感波形。</desc>
+  <rect width="256" height="256" rx="56" fill="#6759EF"/>
+  <path d="M63 100c0-22 16-35 36-29 10 3 20 4 29 4s19-1 29-4c20-6 36 7 36 29 0 23 8 46 15 68 6 20-11 35-30 28l-35-15h-30l-35 15c-19 7-36-8-30-28 7-22 15-45 15-68z" fill="#FFFFFF"/>
+  <path d="M69 128h27l12-26 21 52 15-40 10 14h33" fill="none" stroke="#6759EF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

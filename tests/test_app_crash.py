@@ -16,10 +16,17 @@ def _fake_qapp(monkeypatch):
         def setApplicationName(self, _name):
             pass
 
+        def setWindowIcon(self, _icon):
+            pass
+
         def exec(self):
             return 0
 
     monkeypatch.setattr(qw, "QApplication", _FakeApp)
+    # QIcon 无真实 QGuiApplication 构造会段错误(Qt 检查 QPixmap 前置条件) —
+    # QApplication 已替身, QIcon 一并打桩
+    import PySide6.QtGui as qg
+    monkeypatch.setattr(qg, "QIcon", lambda *a, **k: object())
     return _FakeApp
 
 

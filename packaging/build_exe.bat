@@ -17,9 +17,18 @@ for %%E in (injector.exe haptic_launcher.exe) do (
     )
 )
 
+rem 应用图标: packaging\icon.svg 是源文件, icon.ico 是多尺寸打包产物
+rem PyInstaller 的 --specpath=build 会把相对 icon 路径解析到 build\ 下, 这里用脚本自身的绝对路径
+set ICON=%~dp0icon.ico
+if not exist "%ICON%" (
+    echo [FAIL] packaging\icon.ico not found.
+    exit /b 1
+)
+
 rem --specpath: .spec 构建中间产物统一落 build\, 不污染仓库根目录
+rem --add-data: 图标一并打进 _internal, app.py 运行时读它设置窗口/任务栏图标
 python -m pip install "pyinstaller>=6.0" || goto :fail
-python -m PyInstaller --noconfirm --clean --windowed --specpath build --name HapticImproveManager --collect-all qfluentwidgets app.py || goto :fail
+python -m PyInstaller --noconfirm --clean --windowed "--icon=%ICON%" --add-data "%ICON%;." --specpath build --name HapticImproveManager --collect-all qfluentwidgets app.py || goto :fail
 
 if not exist "dist\HapticImproveManager\HapticImproveManager.exe" goto :fail
 

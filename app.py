@@ -52,13 +52,23 @@ def _report_crash(tb: str) -> None:
     _show_crash_dialog(summary, path)
 
 
+def _icon_path() -> str:
+    """窗口/任务栏图标: 冻结态在 _MEIPASS(--add-data 打入), 源码态在 packaging/。"""
+    if getattr(sys, "frozen", False):
+        return os.path.join(sys._MEIPASS, "icon.ico")
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "packaging", "icon.ico")
+
+
 def main() -> int:
     try:
+        from PySide6.QtGui import QIcon
         from PySide6.QtWidgets import QApplication
         from ui.main_window import create_main_window
 
         app = QApplication(sys.argv)
         app.setApplicationName("HapticImproveManager")
+        app.setWindowIcon(QIcon(_icon_path()))
         win = create_main_window()
         win.show()
         return app.exec()

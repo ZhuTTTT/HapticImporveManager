@@ -6,7 +6,7 @@
 ; 卸载时自动清理指向本安装目录的 IFEO Debugger 值(否则游戏无法启动)。
 
 #ifndef AppVersion
-  #define AppVersion "0.4.0"
+  #define AppVersion "0.4.1"
 #endif
 
 [Setup]
@@ -27,6 +27,7 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\HapticImproveManager.exe
+SetupIconFile=packaging\icon.ico
 CloseApplications=yes
 RestartApplications=no
 

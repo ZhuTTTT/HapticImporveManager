@@ -14,10 +14,10 @@ if not exist "%ISCC%" (
 )
 
 "%ISCC%" packaging\installer.iss || goto :fail
-if not exist "dist\HapticImproveManager-Setup-0.4.0.exe" goto :fail
+if not exist "dist\HapticImproveManager-Setup-0.4.1.exe" goto :fail
 
 echo.
-echo [OK] Installer: dist\HapticImproveManager-Setup-0.4.0.exe
+echo [OK] Installer: dist\HapticImproveManager-Setup-0.4.1.exe
 exit /b 0
 
 :fail
