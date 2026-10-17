@@ -180,6 +180,25 @@ def _ifeo_on(exe_name: str):
 NOTIFIER_NAME = "Haptics"   # 通知栏显示的来源名称
 
 
+def _data_dir() -> str:
+    """用户数据目录: %APPDATA%\\HapticImproveManager — 与 haptic_launcher.py
+    及 GUI 侧 backend/paths.py 同一规则(三处同改)。"""
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    return os.path.join(base, "HapticImproveManager")
+
+
+def _success_toast_enabled() -> bool:
+    """读 GUI 写入的共享偏好(chain_prefs.json); 缺失/损坏默认开启。
+    只控制注入成功通知, 失败通知始终发送。"""
+    import json
+    try:
+        with open(os.path.join(_data_dir(), "chain_prefs.json"),
+                  encoding="utf-8") as f:
+            return bool(json.load(f).get("inject_success_toast", True))
+    except Exception:
+        return True
+
+
 def _notify(title: str, message: str) -> None:
     """Native WinRT toast via python-winsdk — no PowerShell subprocess,
     so no console window flash at all. show() hands the toast to the
@@ -190,11 +209,22 @@ def _notify(title: str, message: str) -> None:
         from winsdk.windows.ui.notifications import (
             ToastNotification, ToastNotificationManager)
         t, m = html.escape(title), html.escape(message)
+        # 有随包图标则用图文模板(appLogoOverride), 否则退回纯文本模板
+        icon = os.path.join(HERE, "toast_icon.png")
+        if os.path.isfile(icon):
+            from pathlib import Path
+            uri = html.escape(Path(icon).as_uri())  # as_uri 处理空格/中文
+            binding = (
+                "<binding template='ToastImageAndText02'>"
+                f"<image id='1' src='{uri}' placement='appLogoOverride'/>"
+                f"<text id='1'>{t}</text><text id='2'>{m}</text>"
+                "</binding>")
+        else:
+            binding = (f"<binding template='ToastText02'>"
+                       f"<text id='1'>{t}</text><text id='2'>{m}</text>"
+                       f"</binding>")
         xml = XmlDocument()
-        xml.load_xml(
-            f"<toast><visual><binding template='ToastText02'>"
-            f"<text id='1'>{t}</text><text id='2'>{m}</text>"
-            f"</binding></visual></toast>")
+        xml.load_xml(f"<toast><visual>{binding}</visual></toast>")
         ToastNotificationManager.create_toast_notifier(
             NOTIFIER_NAME).show(ToastNotification(xml))
         _report_debug(f"notify shown: {title}")
@@ -248,7 +278,10 @@ def _do_inject(h, dll_path: str) -> None:
 
     if exit_code.value:
         _report(f"injected OK (module handle 0x{exit_code.value:x})")
-        _notify("Haptics 低延迟已激活", "wasapi_relink 注入成功，震动延迟已优化")
+        if _success_toast_enabled():  # 用户可在设置里关掉成功通知
+            _notify("Haptics 低延迟已激活", "wasapi_relink 注入成功，震动延迟已优化")
+        else:
+            _report_debug("success toast suppressed by user pref")
     else:
         _report("LoadLibrary returned NULL — DLL failed to load in target")
         _notify("Haptics 注入失败", "DLL 加载失败，游戏以原生模式运行")

@@ -12,7 +12,7 @@ from qfluentwidgets import (BodyLabel, CaptionLabel, ComboBox, LineEdit,
                             StrongBodyLabel, SwitchButton, TitleLabel,
                             InfoBar, InfoBarPosition)
 
-from backend import ifeo, launcher, paths, registry
+from backend import chain_prefs, ifeo, launcher, paths, registry
 from i18n import tr
 from ui.app_config import AppConfig, apply_theme
 from ui.log_dir_sync import sync_log_dir
@@ -56,6 +56,13 @@ class SettingsPage(QWidget):
         self.mica_switch.setOffText(tr("common.off"))
         self.mica_switch.checkedChanged.connect(self._on_mica)
 
+        # 注入成功通知(失败通知始终发送; 开关同步给注入链)
+        self.toast_switch = SwitchButton(self)
+        self.toast_switch.setChecked(cfg.inject_toast.value)
+        self.toast_switch.setOnText(tr("common.on"))
+        self.toast_switch.setOffText(tr("common.off"))
+        self.toast_switch.checkedChanged.connect(self._on_toast)
+
         # 日志目录
         self.log_dir_edit = LineEdit(self)
         self.log_dir_edit.setReadOnly(True)
@@ -79,6 +86,9 @@ class SettingsPage(QWidget):
         lay.addWidget(self.theme_box)
         lay.addWidget(StrongBodyLabel(tr("settings.mica"), self))
         lay.addWidget(self.mica_switch)
+        lay.addWidget(StrongBodyLabel(tr("settings.inject_toast"), self))
+        lay.addWidget(CaptionLabel(tr("settings.inject_toast_caption"), self))
+        lay.addWidget(self.toast_switch)
         lay.addWidget(StrongBodyLabel(tr("settings.log_dir"), self))
         lay.addWidget(CaptionLabel(tr("settings.log_dir_caption"), self))
         lay.addLayout(dir_row)
@@ -128,6 +138,12 @@ class SettingsPage(QWidget):
         win = self.window()
         if hasattr(win, "apply_mica"):
             win.apply_mica()
+
+    def _on_toast(self, on: bool):
+        self.cfg.inject_toast.value = on
+        self.cfg.save()
+        # 注入链(injector.exe)读不到 gui_config, 经共享偏好文件同步
+        chain_prefs.set("inject_success_toast", on)
 
     def _change_dir(self):
         d = QFileDialog.getExistingDirectory(self, tr("settings.log_dir_pick"),

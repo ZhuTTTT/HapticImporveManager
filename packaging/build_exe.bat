@@ -55,6 +55,7 @@ rem haptic_launcher 保持 onefile: 只被 GUI 以完整路径调用, 无注册�
 rem 且不接触游戏进程链, 没有上述锁目录触发条件
 python -m PyInstaller --noconfirm --clean --onefile --windowed --specpath build --distpath %CHAIN_OUT% --name haptic_launcher chain\haptic_launcher.py || goto :fail
 copy /Y chain\wasapi_relink.dll %CHAIN_OUT%\ || goto :fail
+copy /Y chain\toast_icon.png %CHAIN_OUT%\ || goto :fail
 
 rem 第三方组件许可证随包携带(wasapi_relink 是 Apache-2.0, 再分发需附带许可证文本)
 if not exist "dist\HapticImproveManager\licenses" mkdir "dist\HapticImproveManager\licenses"
@@ -65,6 +66,7 @@ if not exist "%CHAIN_OUT%\injector.exe" goto :fail
 if not exist "%CHAIN_OUT%\_internal\base_library.zip" goto :fail
 if not exist "%CHAIN_OUT%\haptic_launcher.exe" goto :fail
 if not exist "%CHAIN_OUT%\wasapi_relink.dll" goto :fail
+if not exist "%CHAIN_OUT%\toast_icon.png" goto :fail
 
 rem 出包卫生兜底: games.yaml 绝不出包(冻结态缺失即空表起步, 见 registry.load_or_migrate)
 if exist "%CHAIN_OUT%\games.yaml" goto :fail

@@ -65,6 +65,15 @@ _MESSAGES: dict[str, dict[str, str]] = {
     },
     "settings.sync_yes": {"zh": "同步所有游戏", "en": "Sync all games"},
     "settings.sync_no":  {"zh": "仅以后生效", "en": "Only future games"},
+    "settings.inject_toast": {
+        "zh": "注入成功通知",
+        "en": "Injection success notification",
+    },
+    "settings.inject_toast_caption": {
+        "zh": "游戏启动注入成功时弹出 Windows 通知。注入失败的通知始终发送。",
+        "en": "Show a Windows notification when injection succeeds on game "
+              "launch. Failure notifications are always sent.",
+    },
     "settings.sync_ok_title": {"zh": "已同步", "en": "Synced"},
     "settings.sync_ok_msg": {
         "zh": "已更新 {ok} 个游戏的配置",

@@ -17,6 +17,8 @@ class AppConfig(QConfig):
     mica_enabled = ConfigItem(
         "MainWindow", "MicaEnabled", True, BoolValidator())
     log_dir = ConfigItem("Paths", "LogDir", paths.RELINK_LOG_DIR)
+    inject_toast = ConfigItem(
+        "Toast", "InjectSuccessToast", True, BoolValidator())
     language = OptionsConfigItem(
         "MainWindow", "Language", "System",
         OptionsValidator(["System", "zh", "en"]))
