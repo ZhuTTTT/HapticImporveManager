@@ -1,0 +1,2 @@
+# cmd 的 bat 解析器按 CRLF 计算行偏移, LF-only 会串行导致脚本乱执行
+*.bat text eol=crlf
