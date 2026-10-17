@@ -137,9 +137,16 @@ _MESSAGES: dict[str, dict[str, str]] = {
     },
     "detail.remove_title": {"zh": "移除游戏", "en": "Remove game"},
     "detail.remove_confirm": {
-        "zh": "从列表移除 {name}?\n(不动游戏文件和 IFEO 设置)",
-        "en": "Remove {name} from the list?\n"
-              "(Game files and IFEO settings are left untouched.)",
+        "zh": "从列表移除 {name}?\n(不动游戏文件; 若自动注入已开启会先关闭, "
+              "需一次 UAC 提权)",
+        "en": "Remove {name} from the list?\n(Game files are left untouched; "
+              "if auto-inject is on it will be turned off first, which "
+              "requires one UAC elevation.)",
+    },
+    "detail.remove_ifeo_failed": {
+        "zh": "未能关闭自动注入(提权被取消或操作失败), 游戏未移除, 请重试",
+        "en": "Could not turn off auto-inject (elevation cancelled or the "
+              "operation failed). The game was NOT removed — please retry.",
     },
     "detail.ifeo_failed_msg": {
         "zh": "提权被取消或操作失败, 状态未变更",
@@ -404,9 +411,9 @@ _MESSAGES: dict[str, dict[str, str]] = {
     # 诊断页
     "diag.recent": {"zh": "最近注入", "en": "Recent injection"},
     "diag.fixed_log_note": {
-        "zh": "此日志由注入器写入, 位置固定于 specialk 目录",
+        "zh": "此日志由注入器写入, 位置固定于 chain 目录",
         "en": "This log is written by the injector; its location is "
-              "fixed in the specialk directory",
+              "fixed in the chain directory",
     },
     "diag.no_records": {
         "zh": "暂无注入记录",

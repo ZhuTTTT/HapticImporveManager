@@ -2,9 +2,6 @@
 rem Build HapticImproveManager as onedir exe. Run from repo root.
 rem Fails loudly: any error exits non-zero instead of printing a fake success.
 
-rem 注入链源码目录:仅构建期依赖,运行时不需要(链已冻结为 exe 随包分发)
-set SPECIALK=C:\Users\ZhuTT\Workspace\specialk
-
 rem Refuse to build while the old exe is running (it locks dist\).
 tasklist /FI "IMAGENAME eq HapticImproveManager.exe" /NH | find /I "HapticImproveManager.exe" >nul
 if not errorlevel 1 (
@@ -20,12 +17,13 @@ for %%E in (injector.exe haptic_launcher.exe) do (
     )
 )
 
+rem --specpath: .spec 构建中间产物统一落 build\, 不污染仓库根目录
 python -m pip install "pyinstaller>=6.0" || goto :fail
-python -m PyInstaller --noconfirm --clean --windowed --name HapticImproveManager --collect-all qfluentwidgets app.py || goto :fail
+python -m PyInstaller --noconfirm --clean --windowed --specpath build --name HapticImproveManager --collect-all qfluentwidgets app.py || goto :fail
 
 if not exist "dist\HapticImproveManager\HapticImproveManager.exe" goto :fail
 
-rem ---- 注入链冻结:随包分发,彻底零外部依赖 ----
+rem ---- 注入链冻结: 源码就在本仓库 chain/, 随包分发, 彻底零外部依赖 ----
 set CHAIN_OUT=dist\HapticImproveManager\chain
 
 rem chain/ 整目录重建: 本机试跑冻结版时 chain/ 会落下运行残留(games.yaml
@@ -36,15 +34,18 @@ if exist "%CHAIN_OUT%" rmdir /s /q "%CHAIN_OUT%" || goto :fail
 
 rem 两个链 exe 均无窗: IFEO 拉起不闪窗; GUI QProcess 拉起也不弹控制台
 rem (launcher 的 stdout 诊断输出因此不可得, 诊断数据以 injector 的结果/日志文件为准)
-python -m PyInstaller --noconfirm --clean --onefile --windowed --collect-all winsdk --distpath %CHAIN_OUT% --name injector %SPECIALK%\injector.py || goto :fail
-python -m PyInstaller --noconfirm --clean --onefile --windowed --distpath %CHAIN_OUT% --name haptic_launcher %SPECIALK%\haptic_launcher.py || goto :fail
-mkdir %CHAIN_OUT%\zzz_inject 2>nul
-copy /Y %SPECIALK%\zzz_inject\wasapi_relink.dll %CHAIN_OUT%\zzz_inject\ || goto :fail
+python -m PyInstaller --noconfirm --clean --onefile --windowed --specpath build --collect-all winsdk --distpath %CHAIN_OUT% --name injector chain\injector.py || goto :fail
+python -m PyInstaller --noconfirm --clean --onefile --windowed --specpath build --distpath %CHAIN_OUT% --name haptic_launcher chain\haptic_launcher.py || goto :fail
+copy /Y chain\wasapi_relink.dll %CHAIN_OUT%\ || goto :fail
+
+rem 第三方组件许可证随包携带(wasapi_relink 是 Apache-2.0, 再分发需附带许可证文本)
+if not exist "dist\HapticImproveManager\licenses" mkdir "dist\HapticImproveManager\licenses"
+copy /Y licenses\wasapi_relink.LICENSE.txt "dist\HapticImproveManager\licenses\" || goto :fail
 
 rem 完备性校验: 两个 exe + DLL 任一缺失即失败
 if not exist "%CHAIN_OUT%\injector.exe" goto :fail
 if not exist "%CHAIN_OUT%\haptic_launcher.exe" goto :fail
-if not exist "%CHAIN_OUT%\zzz_inject\wasapi_relink.dll" goto :fail
+if not exist "%CHAIN_OUT%\wasapi_relink.dll" goto :fail
 
 rem 出包卫生兜底: games.yaml 绝不出包(冻结态缺失即空表起步, 见 registry.load_or_migrate)
 if exist "%CHAIN_OUT%\games.yaml" goto :fail
@@ -54,7 +55,7 @@ powershell -NoProfile -Command "Compress-Archive -Path 'dist\HapticImproveManage
 
 echo.
 echo [OK] Output: dist\HapticImproveManager\HapticImproveManager.exe
-echo [OK] Chain:  dist\HapticImproveManager\chain\ (injector.exe + haptic_launcher.exe + zzz_inject\wasapi_relink.dll)
+echo [OK] Chain:  dist\HapticImproveManager\chain\ (injector.exe + haptic_launcher.exe + wasapi_relink.dll)
 echo [OK] Zip:    dist\HapticImproveManager.zip (chain 整目录重建, 无本机运行残留)
 exit /b 0
 

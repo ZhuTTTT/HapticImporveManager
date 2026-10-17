@@ -7,27 +7,32 @@ import pytest
 from backend import paths
 
 
-def test_specialk_paths_exist():
-    assert os.path.isdir(paths.SPECIALK_DIR)
+def test_chain_sources_exist():
+    """链源码三件套收编在仓库 chain/ 下(唯一源码真相)。"""
+    assert os.path.isdir(paths.CHAIN_DIR)
     assert os.path.isfile(paths.LAUNCHER_PY)
     assert os.path.isfile(paths.INJECTOR_PY)
     assert os.path.isfile(paths.DEFAULT_DLL)
 
 
-def test_ifeo_value_matches_injector():
-    """IFEO_VALUE 必须与 injector.py 中的常量逐字一致(踩坑 #2)。"""
-    with open(paths.INJECTOR_PY, encoding="utf-8") as f:
-        src = f.read()
-    # injector.py 里常量是拼接字符串, 逐段检查关键部分
-    assert "pythonw.exe" in paths.IFEO_VALUE
-    assert "injector.py\" ifeo" in paths.IFEO_VALUE
-    frag = paths.IFEO_VALUE.split('"')[3]  # injector.py 路径段
-    assert frag.replace("\\\\", "\\") in src.replace("\\\\", "\\")
+def test_ifeo_value_matches_chain_sources():
+    """GUI 的 IFEO_VALUE 必须与链源码计算值逐字一致(三处同规则)。"""
+    sys.path.insert(0, paths.CHAIN_DIR)
+    try:
+        launcher_mod = importlib.import_module("haptic_launcher")
+        injector_mod = importlib.import_module("injector")
+    finally:
+        sys.path.remove(paths.CHAIN_DIR)
+    assert paths.IFEO_VALUE == launcher_mod.IFEO_VALUE
+    assert paths.IFEO_VALUE == injector_mod.IFEO_VALUE
+    assert paths.IFEO_VALUE.endswith('injector.py" ifeo')
 
 
 def test_chain_dir_source_state():
-    """源码态: CHAIN_DIR 即本机 specialk 开发目录, 派生路径全部在其下。"""
-    assert paths.CHAIN_DIR == paths.DEV_SPECIALK_DIR
+    """源码态: CHAIN_DIR 即仓库根/chain, 派生路径全部在其下。"""
+    repo_root = os.path.dirname(os.path.dirname(
+        os.path.abspath(paths.__file__)))
+    assert paths.CHAIN_DIR == os.path.join(repo_root, "chain")
     assert paths.GAMES_YAML == os.path.join(paths.CHAIN_DIR, "games.yaml")
     assert paths.LAUNCHER_EXE == os.path.join(paths.CHAIN_DIR,
                                               "haptic_launcher.exe")
@@ -56,8 +61,7 @@ def test_frozen_chain_dir(frozen_paths, tmp_path):
     assert paths.GAMES_YAML == os.path.join(chain, "games.yaml")
     assert paths.LAUNCHER_PY == os.path.join(chain, "haptic_launcher.py")
     assert paths.INJECTOR_PY == os.path.join(chain, "injector.py")
-    assert paths.DEFAULT_DLL == os.path.join(chain, "zzz_inject",
-                                             "wasapi_relink.dll")
+    assert paths.DEFAULT_DLL == os.path.join(chain, "wasapi_relink.dll")
     assert paths.INJECTOR_RESULT == os.path.join(chain, "injector_result.txt")
     assert paths.INJECTOR_DEBUG_LOG == os.path.join(chain,
                                                     "injector_debug.log")

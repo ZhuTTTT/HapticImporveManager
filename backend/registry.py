@@ -1,21 +1,13 @@
-"""游戏注册表: specialk/games.yaml 读写, GUI 与 haptic_launcher.py 共用。"""
+"""游戏注册表: chain/games.yaml 读写, GUI 与 haptic_launcher 共用。"""
 from __future__ import annotations
 
 import os
 import shutil
-import sys
 from dataclasses import dataclass, asdict
 
 import yaml
 
 from . import paths
-
-# 已知游戏的展示用经验值(HANDOVER 第 2 节)
-_HINTS = {
-    "ds2": {"mode_hint": "Ringbuf", "buffer_hint": 2048, "anticheat": False},
-    "sb": {"mode_hint": "Normal", "buffer_hint": 256, "anticheat": False},
-    "zzz": {"mode_hint": "Normal", "buffer_hint": 960, "anticheat": True},
-}
 
 
 @dataclass
@@ -101,52 +93,14 @@ def remove_game(name: str, path: str = paths.GAMES_YAML) -> None:
     save_games(games, path)
 
 
-def migrate_from_launcher(path: str = paths.GAMES_YAML,
-                          launcher_dir: str = paths.SPECIALK_DIR
-                          ) -> dict[str, GameEntry]:
-    """从 haptic_launcher.py 的硬编码 GAMES 生成 games.yaml(含已知经验值)。"""
-    if launcher_dir not in sys.path:
-        sys.path.insert(0, launcher_dir)
-    import haptic_launcher  # noqa: E402 — 动态加入 sys.path 后导入
-    games = {}
-    for name, exe in haptic_launcher.GAMES.items():
-        games[name] = GameEntry(name=name, exe=exe, **_HINTS.get(name, {}))
-    save_games(games, path)
-    return games
-
-
-def migrate_legacy_chain_yaml(games_yaml_path: str, legacy_dir: str) -> bool:
-    """从旧链目录(源码/≤v0.2.0 的 specialk 目录)迁移 games.yaml。
-
-    目标不存在且 <legacy_dir>/games.yaml 存在 → 复制(保留原件)并返回 True;
-    其他情况不动作返回 False。绝不覆盖已存在的目标。"""
-    if os.path.exists(games_yaml_path):
-        return False
-    legacy = os.path.join(legacy_dir, "games.yaml")
-    if not os.path.isfile(legacy):
-        return False
-    shutil.copy2(legacy, games_yaml_path)
-    return True
-
-
 def load_or_migrate(path: str = paths.GAMES_YAML) -> dict[str, GameEntry]:
-    """优先读 games.yaml; 缺失/损坏时按运行态恢复:
-    冻结态没有 haptic_launcher.py 可迁移(用户机器零依赖), 从空注册表起步;
-    源码态(备份 .bak 后)从 launcher 硬编码 GAMES 迁移。
-    冻结态前置一步: 旧 specialk 目录的 games.yaml 复制迁移(真实用户机器上
-    旧目录不存在, 自然跳过; 仅开发机从源码/旧版切到冻结版时触发一次)。"""
-    frozen = getattr(sys, "frozen", False)
-    if frozen:
-        migrate_legacy_chain_yaml(path, paths.DEV_SPECIALK_DIR)
+    """读 games.yaml; 缺失从空注册表起步, 损坏则备份 .bak 后从空表起步
+    (冻结/源码两态统一, 应用自包含, 不向外部目录迁移)。"""
     try:
         return load_games(path)
     except FileNotFoundError:
-        if frozen:
-            return {}
-        return migrate_from_launcher(path)
+        return {}
     except (yaml.YAMLError, KeyError, TypeError, ValueError):
         # ValueError: buffer_hint 等非整数字段 int() 转换失败, 同样备份后恢复
-        shutil.copy(path, path + ".bak")  # 损坏文件两态都保留
-        if frozen:
-            return {}
-        return migrate_from_launcher(path)
+        shutil.copy(path, path + ".bak")  # 损坏文件保留
+        return {}

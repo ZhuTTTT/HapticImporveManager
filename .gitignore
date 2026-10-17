@@ -5,3 +5,10 @@ __pycache__/
 .superpowers/
 build/
 dist/
+*.spec
+
+# chain/ 只跟踪链源码三件套, 运行残留(个人注册表/日志/结果文件)不进仓库
+chain/*
+!chain/injector.py
+!chain/haptic_launcher.py
+!chain/wasapi_relink.dll

@@ -9,7 +9,9 @@ def test_defaults_when_file_missing(tmp_path):
     cfg = load_app_config(str(tmp_path / "nonexistent.json"))
     assert cfg.theme_mode.value == "Auto"
     assert cfg.mica_enabled.value is True
-    assert cfg.log_dir.value == paths.RELINK_LOG_DIR
+    # ConfigItem 描述符类级共享: ui.app_config 导入时 APP_CFG 已加载真实
+    # 用户配置, log_dir.value 可能被污染 — 断言 schema 默认值(接线)本身
+    assert cfg.log_dir.defaultValue == paths.RELINK_LOG_DIR
 
 
 def test_round_trip(tmp_path):
