@@ -18,7 +18,6 @@ def _chain_dir() -> str:
 
 
 CHAIN_DIR = _chain_dir()
-GAMES_YAML = os.path.join(CHAIN_DIR, "games.yaml")
 LAUNCHER_PY = os.path.join(CHAIN_DIR, "haptic_launcher.py")
 INJECTOR_PY = os.path.join(CHAIN_DIR, "injector.py")
 DEFAULT_DLL = os.path.join(CHAIN_DIR, "wasapi_relink.dll")
@@ -30,6 +29,22 @@ RELINK_LOG = os.path.join(RELINK_LOG_DIR, "wasapi_relink.log")
 
 LAUNCHER_EXE = os.path.join(CHAIN_DIR, "haptic_launcher.exe")
 INJECTOR_EXE = os.path.join(CHAIN_DIR, "injector.exe")
+
+
+def _data_dir() -> str:
+    """用户数据目录: %APPDATA%\\HapticImproveManager(gui_config.json 同目录)。
+
+    逻辑与 ui/app_config.py 的 _default_path 有意重复(backend 不依赖 ui)。
+    """
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    return os.path.join(base, "HapticImproveManager")
+
+
+DATA_DIR = _data_dir()
+# 游戏注册表放用户数据目录: 升级/换安装位置/删应用目录都不丢;
+# 旧位置(chain/games.yaml)由 registry.load_or_migrate 一次性迁移
+GAMES_YAML = os.path.join(DATA_DIR, "games.yaml")
+LEGACY_GAMES_YAML = os.path.join(CHAIN_DIR, "games.yaml")
 
 IFEO_BASE = (r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"
              r"\Image File Execution Options")

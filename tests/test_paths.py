@@ -26,6 +26,8 @@ def test_ifeo_value_matches_chain_sources():
     assert paths.IFEO_VALUE == launcher_mod.IFEO_VALUE
     assert paths.IFEO_VALUE == injector_mod.IFEO_VALUE
     assert paths.IFEO_VALUE.endswith('injector.py" ifeo')
+    # 游戏注册表位置同样两处同规则(用户数据目录)
+    assert paths.GAMES_YAML == launcher_mod.GAMES_YAML
 
 
 def test_injector_ctypes_argtypes_complete():
@@ -48,11 +50,14 @@ def test_injector_ctypes_argtypes_complete():
 
 
 def test_chain_dir_source_state():
-    """源码态: CHAIN_DIR 即仓库根/chain, 派生路径全部在其下。"""
+    """源码态: CHAIN_DIR 即仓库根/chain, 派生路径全部在其下;
+    游戏注册表例外 — 在用户数据目录(升级不丢), chain 下为旧位置。"""
     repo_root = os.path.dirname(os.path.dirname(
         os.path.abspath(paths.__file__)))
     assert paths.CHAIN_DIR == os.path.join(repo_root, "chain")
-    assert paths.GAMES_YAML == os.path.join(paths.CHAIN_DIR, "games.yaml")
+    assert paths.GAMES_YAML == os.path.join(paths.DATA_DIR, "games.yaml")
+    assert paths.LEGACY_GAMES_YAML == os.path.join(paths.CHAIN_DIR,
+                                                   "games.yaml")
     assert paths.LAUNCHER_EXE == os.path.join(paths.CHAIN_DIR,
                                               "haptic_launcher.exe")
     assert paths.INJECTOR_EXE == os.path.join(paths.CHAIN_DIR, "injector.exe")
@@ -77,7 +82,8 @@ def test_frozen_chain_dir(frozen_paths, tmp_path):
     """冻结态: 链目录解析为 <exe目录>/chain, 不真建目录/文件, 纯路径断言。"""
     chain = os.path.join(str(tmp_path), "pkg", "chain")
     assert paths.CHAIN_DIR == chain
-    assert paths.GAMES_YAML == os.path.join(chain, "games.yaml")
+    assert paths.GAMES_YAML == os.path.join(paths.DATA_DIR, "games.yaml")
+    assert paths.LEGACY_GAMES_YAML == os.path.join(chain, "games.yaml")
     assert paths.LAUNCHER_PY == os.path.join(chain, "haptic_launcher.py")
     assert paths.INJECTOR_PY == os.path.join(chain, "injector.py")
     assert paths.DEFAULT_DLL == os.path.join(chain, "wasapi_relink.dll")

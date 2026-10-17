@@ -120,12 +120,12 @@ HapticImporveManager/
 └─ docs/superpowers/        # Design and implementation docs
 ```
 
-Runtime data is self-contained inside the app folder: `chain/games.yaml` (the
-game registry, shared by the GUI and the CLI) and injection logs
-(`chain/logs/`, `injector_result.txt`, etc.). The only exception is
-`redirect_config.toml`, written next to each game exe (the injection config
-read by wasapi_relink). GUI settings (theme / log directory) live in
-`%APPDATA%/HapticImproveManager/gui_config.json`.
+Runtime data lives in three places: the game registry `games.yaml` and GUI
+settings in `%APPDATA%/HapticImproveManager/` (survives upgrades and reinstalls
+— a registry left in the old `chain/` location is migrated on first launch);
+injection logs inside the app folder under `chain/` (`logs/`,
+`injector_result.txt`, etc.); and `redirect_config.toml` (the injection config
+read by wasapi_relink) next to each game exe.
 
 ## Development
 

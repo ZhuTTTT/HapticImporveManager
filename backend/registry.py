@@ -57,6 +57,9 @@ def save_games(games: dict[str, GameEntry], path: str = paths.GAMES_YAML) -> Non
         d = asdict(e)
         d.pop("name")  # name 是 YAML 键, 不重复存为字段
         payload["games"][name] = d
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)  # 用户数据目录可能尚未创建
     with open(path, "w", encoding="utf-8") as f:
         yaml.safe_dump(payload, f, allow_unicode=True, sort_keys=False)
 
@@ -130,9 +133,19 @@ def remove_game(name: str, path: str = paths.GAMES_YAML) -> None:
     save_games(games, path)
 
 
-def load_or_migrate(path: str = paths.GAMES_YAML) -> dict[str, GameEntry]:
-    """读 games.yaml; 缺失从空注册表起步, 损坏则备份 .bak 后从空表起步
-    (冻结/源码两态统一, 应用自包含, 不向外部目录迁移)。"""
+def load_or_migrate(path: str = paths.GAMES_YAML,
+                    legacy: str = paths.LEGACY_GAMES_YAML
+                    ) -> dict[str, GameEntry]:
+    """读 games.yaml; 缺失从空注册表起步, 损坏则备份 .bak 后从空表起步。
+
+    一次性迁移: 新位置(用户数据目录)缺失而旧位置(chain/games.yaml)
+    存在 → 移动过来(升级/换安装位置后游戏列表不丢)。"""
+    if not os.path.exists(path) and os.path.isfile(legacy):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            shutil.move(legacy, path)
+        except OSError:
+            shutil.copy2(legacy, path)  # 移动失败(跨盘/占用)退化为复制
     try:
         return load_games(path)
     except FileNotFoundError:

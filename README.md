@@ -103,10 +103,11 @@ HapticImporveManager/
 └─ docs/superpowers/        # 设计与实现文档
 ```
 
-运行时数据全部自包含在应用目录内:`chain/games.yaml`(游戏注册表,GUI 与
-CLI 共用)、注入日志(`chain/logs/`、`injector_result.txt` 等)。唯一的例外
-是写入游戏目录的 `redirect_config.toml`(wasapi_relink 读取的注入配置)。
-GUI 自身设置(主题 / 日志目录)存 `%APPDATA%/HapticImproveManager/gui_config.json`。
+运行时数据分三处:游戏注册表 `games.yaml` 与 GUI 设置存
+`%APPDATA%/HapticImproveManager/`(升级/换安装位置不丢,旧版 chain 位置的
+注册表首次启动自动迁移);注入日志在应用目录 `chain/`(`logs/`、
+`injector_result.txt` 等,随安装走);`redirect_config.toml`(wasapi_relink
+读取的注入配置)写在各游戏目录。
 
 ## 二次开发
 

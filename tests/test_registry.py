@@ -45,7 +45,7 @@ def test_derived_properties():
 
 def test_load_or_migrate_missing_starts_empty(yaml_path):
     """games.yaml 缺失: 从空注册表起步, 不抛异常不写盘(两态统一)。"""
-    games = load_or_migrate(yaml_path)
+    games = load_or_migrate(yaml_path, legacy=yaml_path + ".none")
     assert games == {}
     assert not os.path.exists(yaml_path)
     assert not os.path.exists(yaml_path + ".bak")
@@ -55,7 +55,7 @@ def test_load_or_migrate_backs_up_corrupt(yaml_path):
     """yaml 损坏: 备份 .bak 后从空注册表起步。"""
     with open(yaml_path, "w", encoding="utf-8") as f:
         f.write("games: [broken yaml{")
-    games = load_or_migrate(yaml_path)
+    games = load_or_migrate(yaml_path, legacy=yaml_path + ".none")
     assert games == {}
     assert os.path.isfile(yaml_path + ".bak")
 
@@ -65,9 +65,24 @@ def test_load_or_migrate_recovers_bad_buffer_hint(yaml_path):
     with open(yaml_path, "w", encoding="utf-8") as f:
         yaml.safe_dump({"games": {"bad": {"exe": r"C:\bad.exe",
                                           "buffer_hint": "abc"}}}, f)
-    games = load_or_migrate(yaml_path)
+    games = load_or_migrate(yaml_path, legacy=yaml_path + ".none")
     assert games == {}
     assert os.path.isfile(yaml_path + ".bak")
+
+
+def test_load_or_migrate_moves_legacy(tmp_path):
+    """一次性迁移: 新位置缺失 + 旧位置(chain/games.yaml)存在 → 移动过来。"""
+    from backend import registry
+    legacy = tmp_path / "chain" / "games.yaml"
+    legacy.parent.mkdir()
+    registry.save_games(
+        {"ds2": registry.GameEntry(name="ds2", exe=r"E:\DS2.exe")},
+        str(legacy))
+    target = tmp_path / "appdata" / "HapticImproveManager" / "games.yaml"
+    games = registry.load_or_migrate(str(target), str(legacy))
+    assert "ds2" in games
+    assert not legacy.exists()      # 已移动而非复制
+    assert target.is_file()
 
 
 def test_update_hints_persists_and_noop_for_unknown(tmp_path):

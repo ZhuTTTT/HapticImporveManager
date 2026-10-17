@@ -37,7 +37,16 @@ def _source_ifeo_value() -> str:
 IFEO_VALUE = (f'"{os.path.join(HERE, "injector.exe")}" ifeo'
               if getattr(sys, "frozen", False) else _source_ifeo_value())
 
-GAMES_YAML = os.path.join(HERE, "games.yaml")
+def _data_dir() -> str:
+    """用户数据目录: %APPDATA%\\HapticImproveManager — 与 GUI 侧
+    backend/paths.py 的 _data_dir 同一规则(两处同改)。"""
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    return os.path.join(base, "HapticImproveManager")
+
+
+# 游戏注册表在用户数据目录(升级/换安装位置不丢), 与 GUI 共用单一数据源;
+# 旧位置(chain/games.yaml)的迁移由 GUI 启动时完成(load_or_migrate)
+GAMES_YAML = os.path.join(_data_dir(), "games.yaml")
 
 
 def load_games() -> dict:
